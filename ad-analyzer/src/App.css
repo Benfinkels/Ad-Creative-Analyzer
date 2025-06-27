@@ -1,0 +1,22 @@
+body {
+  background-color: #f8f9fa;
+}
+
+.container {
+  max-width: 800px;
+}
+
+.relevance-high {
+  background-color: #28a745;
+  color: white;
+}
+
+.relevance-medium {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.relevance-low {
+  background-color: #6c757d;
+  color: white;
+}

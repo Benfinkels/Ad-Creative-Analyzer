@@ -1,0 +1,3 @@
+# Only ignore the local node_modules directory.
+# The build process on Google Cloud will run 'npm install' on its own.
+node_modules/

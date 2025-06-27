@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+/ad-analyzer/node_modules/
+/ad-analyzer/build/
+
+# Environment variables
+.env
+.env.*
+!/.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System files
+.DS_Store

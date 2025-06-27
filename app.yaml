@@ -1,0 +1,10 @@
+runtime: nodejs18
+handlers:
+  # Serve all static files with urls ending in a file extension
+  - url: /(.*\..+)$
+    static_files: ad-analyzer/build/\1
+    upload: ad-analyzer/build/(.*\..+)$
+  # Catch all handler to index.html
+  - url: /.*
+    static_files: ad-analyzer/build/index.html
+    upload: ad-analyzer/build/index.html
