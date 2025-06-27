@@ -21,7 +21,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "node ad-analyzer/server.js",
     "dev": "craco start",
     "build": "craco build",
     "test": "craco test",
