@@ -18,7 +18,7 @@ handlers:
     upload: ad-analyzer/build/index.html
     secure: always
 
-entrypoint: npm start --prefix ad-analyzer
+entrypoint: npm install --prefix ad-analyzer && npm run build --prefix ad-analyzer && npm start --prefix ad-analyzer
 
 env_variables:
   GEMINI_API_KEY: 'AIzaSyACPC0rXtdL6R8aWGFxU7ZrJNGThI9Ns3s'
