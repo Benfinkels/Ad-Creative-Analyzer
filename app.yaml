@@ -1,7 +1,5 @@
 runtime: nodejs22
 
-build: npm install --prefix ad-analyzer && npm run build --prefix ad-analyzer
-
 handlers:
   # API handler
   - url: /api/.*
