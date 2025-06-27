@@ -1,16 +1,22 @@
 runtime: nodejs22
 
-env_variables:
-  GEMINI_API_KEY: 'AIzaSyACPC0rXtdL6R8aWGFxU7ZrJNGThI9Ns3s'
-
 handlers:
+  # API handler
+  - url: /api/.*
+    script: auto
+    secure: always
+
   # Serve all static files with urls ending in a file extension
   - url: /(.*\..+)$
     static_files: ad-analyzer/build/\1
-    upload: ad-analyzer/build/(.*\..+)$
+    upload: ad-analyzer/build/(.*\..+)
+    secure: always
+
   # Catch all handler to index.html
   - url: /.*
     static_files: ad-analyzer/build/index.html
     upload: ad-analyzer/build/index.html
+    secure: always
 
-entrypoint: npm start --prefix ad-analyzer
+env_variables:
+  GEMINI_API_KEY: 'AIzaSyACPC0rXtdL6R8aWGFxU7ZrJNGThI9Ns3s'

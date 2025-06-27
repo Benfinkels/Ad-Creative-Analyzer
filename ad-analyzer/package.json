@@ -25,7 +25,8 @@
     "dev": "craco start",
     "build": "craco build",
     "test": "craco test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "gcp-build": "npm install && npm run build"
   },
   "eslintConfig": {
     "extends": [
