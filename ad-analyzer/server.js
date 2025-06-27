@@ -9,6 +9,7 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+console.log('Using Gemini API Key:', process.env.GEMINI_API_KEY ? 'Loaded' : 'Not Loaded');
 const systemPrompt = fs.readFileSync(path.join(__dirname, 'system-prompt.txt'), 'utf-8');
 
 const storage = multer.memoryStorage();
