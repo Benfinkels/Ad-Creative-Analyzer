@@ -1,12 +1,16 @@
 runtime: nodejs22
-instance_class: F2
+instance_class: F4
 
 handlers:
   # API handler
   - url: /api/.*
     script: auto
     secure: always
-    timeout: 600
+
+  # Readiness check handler
+  - url: /readiness_check
+    script: auto
+    secure: always
 
   # Serve all static files with urls ending in a file extension
   - url: /(.*\..+)$
@@ -17,15 +21,23 @@ handlers:
     static_files: build/index.html
     upload: build/index.html
 
-entrypoint: npm install --no-optional && npm run build && npm start
+entrypoint: npm install --no-optional --no-save && npm run build && npm start
 
 env_variables:
-  GEMINI_API_KEY: 'AIzaSyACPC0rXtdL6R8aWGFxU7ZrJNGThI9Ns3s'
+  GEMINI_API_KEY: 'AIzaSyBsnrkDbHN6u0oaPhRLD7-dg2Ng_tYoz1I'
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 1
+  target_cpu_utilization: 0.65
+  min_pending_latency: 10s
+  max_pending_latency: automatic
+  max_concurrent_requests: 50
 
 readiness_check:
   path: "/readiness_check"
   check_interval_sec: 10
-  timeout_sec: 5
+  timeout_sec: 50
   failure_threshold: 4
   success_threshold: 2
   app_start_timeout_sec: 180

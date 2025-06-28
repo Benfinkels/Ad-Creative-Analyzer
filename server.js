@@ -18,6 +18,7 @@ const upload = multer({ storage });
 app.use(express.static(path.join(__dirname, 'build')));
 
 app.post('/api/analyze-video', upload.single('video'), async (req, res) => {
+  console.log('Received request to /api/analyze-video');
   try {
     if (!req.file) {
       return res.status(400).send('No video file uploaded.');
