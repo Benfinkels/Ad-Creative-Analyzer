@@ -60,7 +60,6 @@ const VideoUpload = ({ onAnalysisComplete, onAnalysisStart }) => {
     } catch (error) {
       console.error('Error analyzing video:', error);
       alert('Error analyzing video. Please try again.');
-    } finally {
       setUploading(false);
     }
   };
