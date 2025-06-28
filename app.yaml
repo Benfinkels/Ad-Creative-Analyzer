@@ -16,7 +16,7 @@ handlers:
     static_files: build/index.html
     upload: build/index.html
 
-entrypoint: npm install && npm run build && npm start
+entrypoint: npm install --no-optional && npm run build && npm start
 
 env_variables:
   GEMINI_API_KEY: 'AIzaSyACPC0rXtdL6R8aWGFxU7ZrJNGThI9Ns3s'
