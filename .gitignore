@@ -1,7 +1,6 @@
 # Dependencies
-node_modules/
-/ad-analyzer/node_modules/
-/ad-analyzer/build/
+/node_modules/
+/build/
 
 # Environment variables
 .env
