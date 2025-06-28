@@ -6,6 +6,7 @@ handlers:
   - url: /api/.*
     script: auto
     secure: always
+    timeout: 600
 
   # Serve all static files with urls ending in a file extension
   - url: /(.*\..+)$
