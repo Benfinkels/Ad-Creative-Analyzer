@@ -1,10 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const VideoUpload = ({ onAnalysisComplete, onAnalysisStart }) => {
   const [file, setFile] = useState(null);
   const [marketingObjective, setMarketingObjective] = useState('Awareness');
   const [uploading, setUploading] = useState(false);
+  const [jobId, setJobId] = useState(null);
+  const [polling, setPolling] = useState(false);
+
+  useEffect(() => {
+    let interval;
+    if (polling) {
+      interval = setInterval(async () => {
+        try {
+          const response = await axios.get(`/api/analysis-status/${jobId}`);
+          if (response.data.status === 'complete') {
+            setPolling(false);
+            const resultResponse = await axios.get(`/api/analysis-result/${jobId}`);
+            onAnalysisComplete(resultResponse.data);
+          } else if (response.data.status === 'error') {
+            setPolling(false);
+            alert('Error analyzing video. Please try again.');
+          }
+        } catch (error) {
+          setPolling(false);
+          console.error('Error polling for analysis status:', error);
+          alert('Error checking analysis status. Please try again.');
+        }
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [polling, jobId, onAnalysisComplete]);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -29,7 +55,8 @@ const VideoUpload = ({ onAnalysisComplete, onAnalysisStart }) => {
           'Content-Type': 'multipart/form-data',
         },
       });
-      onAnalysisComplete(response.data);
+      setJobId(response.data.jobId);
+      setPolling(true);
     } catch (error) {
       console.error('Error analyzing video:', error);
       alert('Error analyzing video. Please try again.');
@@ -57,13 +84,8 @@ const VideoUpload = ({ onAnalysisComplete, onAnalysisStart }) => {
           <option value="Action">Action</option>
         </select>
       </div>
-      <button className="btn btn-primary" onClick={handleUpload} disabled={uploading}>
-        {uploading ? (
-          <>
-            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-            <span className="ms-2">Analyzing...</span>
-          </>
-        ) : 'Analyze Video'}
+      <button className="btn btn-primary" onClick={handleUpload} disabled={uploading || polling}>
+        {uploading ? 'Uploading...' : polling ? 'Analyzing...' : 'Analyze Video'}
       </button>
     </div>
   );
