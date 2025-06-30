@@ -3,42 +3,52 @@ import { google } from 'googleapis';
 import { handleAuthClick, initGoogleApi } from './gapi';
 
 const createPresentation = async (analysis) => {
-  const slides = google.slides('v1');
-  const presentation = await slides.presentations.create({
-    title: 'Ad Analysis Report',
-  });
+  try {
+    const slides = window.gapi.client.slides;
+    const presentation = await slides.presentations.create({
+      title: 'Ad Analysis Report',
+    });
 
-  const requests = [
-    {
-      createSlide: {
-        objectId: 'title_slide',
-        slideLayoutReference: {
-          predefinedLayout: 'TITLE_SLIDE',
+    const requests = [
+      {
+        createSlide: {
+          objectId: 'title_slide',
+          slideLayoutReference: {
+            predefinedLayout: 'TITLE_SLIDE',
+          },
         },
       },
-    },
-    {
-      insertText: {
-        objectId: 'title_slide',
-        textToInsert: 'Ad Analysis Report',
-        insertionIndex: 0,
+      {
+        insertText: {
+          objectId: 'title_slide',
+          textToInsert: 'Ad Analysis Report',
+          insertionIndex: 0,
+        },
       },
-    },
-  ];
+    ];
 
-  await slides.presentations.batchUpdate({
-    presentationId: presentation.data.presentationId,
-    requestBody: {
+    await slides.presentations.batchUpdate({
+      presentationId: presentation.result.presentationId,
       requests,
-    },
-  });
+    });
 
-  return presentation.data;
+    return presentation.result;
+  } catch (error) {
+    console.error('Error creating presentation:', error);
+    throw error;
+  }
 };
 
 const GoogleSlidesExport = ({ analysis }) => {
+  const [isGapiReady, setIsGapiReady] = useState(false);
+
   useEffect(() => {
-    initGoogleApi();
+    initGoogleApi()
+      .then(() => setIsGapiReady(true))
+      .catch(error => {
+        console.error("Failed to initialize Google API:", error);
+        setIsGapiReady(false);
+      });
   }, []);
 
   const handleExport = async () => {
@@ -48,8 +58,13 @@ const GoogleSlidesExport = ({ analysis }) => {
       window.open(`https://docs.google.com/presentation/d/${presentation.presentationId}/edit`, '_blank');
     } catch (error) {
       console.error('Error exporting to Google Slides:', error);
+      alert('Error exporting to Google Slides. Please check the console for more details and ensure your Google Cloud project is configured correctly.');
     }
   };
+
+  if (!isGapiReady) {
+    return <button className="btn btn-secondary" disabled>Loading Export... </button>;
+  }
 
   return (
     <button className="btn btn-secondary" onClick={handleExport}>

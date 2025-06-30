@@ -43,18 +43,49 @@ app.post('/api/analyze-video', upload.single('video'), async (req, res) => {
     ]);
 
     const response = await result.response;
-    let text = response.text();
+    const rawText = response.text();
+    console.log("---- RAW GEMINI RESPONSE ----");
+    console.log(rawText);
+    console.log("---- END RAW GEMINI RESPONSE ----");
+    let text = rawText;
 
     // Clean the response to ensure it's valid JSON
-    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
+    const match = text.match(jsonRegex);
+
+    if (match && match[1]) {
+      text = match[1].trim();
+    } else {
+      // Fallback for cases where the markers are missing but it's still mostly JSON
+      const firstBracket = text.indexOf('{');
+      const lastBracket = text.lastIndexOf('}');
+      if (firstBracket !== -1 && lastBracket !== -1) {
+        text = text.substring(firstBracket, lastBracket + 1);
+      }
+    }
 
     try {
       const jsonResponse = JSON.parse(text);
       res.json(jsonResponse);
     } catch (e) {
-      console.error('Failed to parse Gemini response:', e);
+      console.error('Initial parse failed. Attempting to repair JSON.', e);
       console.error('Raw Gemini response:', text);
-      res.status(500).send('Error parsing analysis data.');
+
+      try {
+        const repairModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const repairResult = await repairModel.generateContent([
+          "The following text is a broken JSON response from an API. Please correct any syntax errors and return only the valid JSON object. Do not add any extra text or explanations.",
+          text
+        ]);
+        const repairedText = (await repairResult.response).text();
+        const jsonResponse = JSON.parse(repairedText);
+        console.log('Successfully repaired and parsed JSON.');
+        res.json(jsonResponse);
+      } catch (repairError) {
+        console.error('Failed to repair and parse Gemini response:', repairError);
+        console.error('Repaired text was:', (await repairResult.response).text());
+        res.status(500).send('Error parsing analysis data after repair.');
+      }
     }
   } catch (error) {
     console.error('Error analyzing video:', error);

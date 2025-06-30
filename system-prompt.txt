@@ -113,7 +113,7 @@ Based on your analysis, provide 3-5 concrete, actionable recommendations for imp
 
 # OUTPUT FORMAT
 
-Your final output must be a single JSON object. Do not include any text outside of the JSON structure.
+Your final output must be a single, valid JSON object. Do not include any text, markdown formatting, or code fences outside of the JSON structure. The entire response should be parseable as JSON.
 
 ```json
 {
