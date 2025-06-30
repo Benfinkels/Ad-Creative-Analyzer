@@ -6,7 +6,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3002;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 console.log('Using Gemini API Key:', process.env.GEMINI_API_KEY ? 'Loaded' : 'Not Loaded');
@@ -24,7 +24,7 @@ app.post('/api/analyze-video', upload.single('video'), async (req, res) => {
     }
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-pro',
+      model: 'gemini-1.5-pro-latest',
       systemInstruction: systemPrompt,
     });
 
@@ -37,10 +37,27 @@ app.post('/api/analyze-video', upload.single('video'), async (req, res) => {
       },
     };
 
-    const result = await model.generateContent([
-      `Marketing Objective: ${marketing_objective}`,
-      videoPart,
-    ]);
+    let result;
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+      try {
+        result = await model.generateContent([
+          `Marketing Objective: ${marketing_objective}`,
+          videoPart,
+        ]);
+        break; // Success, exit loop
+      } catch (error) {
+        attempts++;
+        console.error(`Attempt ${attempts} failed:`, error);
+        if (attempts >= maxAttempts) {
+          throw error; // Rethrow error after final attempt
+        }
+        // Optional: wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+      }
+    }
 
     const response = await result.response;
     const rawText = response.text();

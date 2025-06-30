@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { google } from 'googleapis';
 import { handleAuthClick, initGoogleApi } from './gapi';
 
 const createPresentation = async (analysis) => {
@@ -8,29 +7,56 @@ const createPresentation = async (analysis) => {
     const presentation = await slides.presentations.create({
       title: 'Ad Analysis Report',
     });
+    const presentationId = presentation.result.presentationId;
 
-    const requests = [
-      {
-        createSlide: {
-          objectId: 'title_slide',
-          slideLayoutReference: {
-            predefinedLayout: 'TITLE_SLIDE',
-          },
-        },
-      },
-      {
-        insertText: {
-          objectId: 'title_slide',
-          textToInsert: 'Ad Analysis Report',
-          insertionIndex: 0,
-        },
-      },
-    ];
-
+    // --- Set Title on First Slide ---
+    let pres = await slides.presentations.get({ presentationId });
+    let slide = pres.result.slides[0];
+    let titleElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'TITLE' || e.shape?.placeholder?.type === 'CENTERED_TITLE');
+    let titleId = titleElement.objectId;
     await slides.presentations.batchUpdate({
-      presentationId: presentation.result.presentationId,
-      requests,
+      presentationId,
+      requests: [{ insertText: { objectId: titleId, text: 'Ad Analysis Report' } }],
     });
+
+    // --- Helper to create a new slide and add content ---
+    const addContentSlide = async (title, body) => {
+      const slideId = `${title.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`;
+      await slides.presentations.batchUpdate({
+        presentationId,
+        requests: [{ createSlide: { objectId: slideId, slideLayoutReference: { predefinedLayout: 'TITLE_AND_BODY' } } }],
+      });
+      pres = await slides.presentations.get({ presentationId });
+      slide = pres.result.slides.find(s => s.objectId === slideId);
+      titleElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'TITLE' || e.shape?.placeholder?.type === 'CENTERED_TITLE');
+      const bodyElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'BODY');
+      titleId = titleElement.objectId;
+      const bodyId = bodyElement.objectId;
+      await slides.presentations.batchUpdate({
+        presentationId,
+        requests: [
+          { insertText: { objectId: titleId, text: title } },
+          { insertText: { objectId: bodyId, text: body } },
+        ],
+      });
+    };
+
+    // --- Create Slides for Each Section ---
+    await addContentSlide(
+      `Evaluation Summary: ${analysis.evaluation_summary.overall_score}`,
+      `Executive Summary: ${analysis.evaluation_summary.executive_summary}\n\nTop Strength: ${analysis.evaluation_summary.top_strength}\n\nTop Opportunity: ${analysis.evaluation_summary.top_opportunity}`
+    );
+
+    const assetReqsBody = analysis.asset_requirements_check.map(req => `${req.requirement}: ${req.status} - ${req.comment}`).join('\n');
+    await addContentSlide('Asset Requirements Check', assetReqsBody);
+
+    for (const [pillar, data] of Object.entries(analysis.abcd_analysis)) {
+      const findingsBody = data.findings.map(finding => `${finding.creative_code} (${finding.timestamp}): ${finding.justification}`).join('\n\n');
+      await addContentSlide(`ABCD Analysis: ${pillar.toUpperCase()}`, `Summary: ${data.summary}\n\n${findingsBody}`);
+    }
+
+    const recommendationsBody = analysis.strategic_recommendations.map(rec => `${rec.recommendation}: ${rec.rationale}`).join('\n\n');
+    await addContentSlide('Strategic Recommendations', recommendationsBody);
 
     return presentation.result;
   } catch (error) {
@@ -41,12 +67,16 @@ const createPresentation = async (analysis) => {
 
 const GoogleSlidesExport = ({ analysis }) => {
   const [isGapiReady, setIsGapiReady] = useState(false);
+  const [gapiError, setGapiError] = useState(null);
 
   useEffect(() => {
     initGoogleApi()
-      .then(() => setIsGapiReady(true))
+      .then(() => {
+        setIsGapiReady(true);
+      })
       .catch(error => {
         console.error("Failed to initialize Google API:", error);
+        setGapiError("Failed to load Google Slides API. Please check your browser console and Google Cloud project configuration.");
         setIsGapiReady(false);
       });
   }, []);
@@ -62,8 +92,12 @@ const GoogleSlidesExport = ({ analysis }) => {
     }
   };
 
+  if (gapiError) {
+    return <button className="btn btn-danger" disabled>{gapiError}</button>;
+  }
+
   if (!isGapiReady) {
-    return <button className="btn btn-secondary" disabled>Loading Export... </button>;
+    return <button className="btn btn-secondary" disabled>Loading Export...</button>;
   }
 
   return (

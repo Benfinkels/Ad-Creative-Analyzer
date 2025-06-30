@@ -4,88 +4,42 @@ const DISCOVERY_DOC = 'https://slides.googleapis.com/$discovery/rest?version=v1'
 const SCOPES = 'https://www.googleapis.com/auth/presentations';
 
 let tokenClient;
-let gapiLoaded = false;
-let gisLoaded = false;
-
-function loadScript(src, onLoad) {
-  const script = document.createElement('script');
-  script.src = src;
-  script.async = true;
-  script.defer = true;
-  script.onload = onLoad;
-  document.body.appendChild(script);
-}
-
-function gapiInit() {
-  window.gapi.client.init({
-    apiKey: API_KEY,
-    discoveryDocs: [DISCOVERY_DOC],
-  }).then(() => {
-    gapiLoaded = true;
-  }, (error) => {
-    console.error('Error initializing GAPI client:', error);
-  });
-}
-
-function gisInit() {
-  tokenClient = window.google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (resp) => {
-      if (resp.error) {
-        console.error('Google authentication error:', resp.error);
-        return;
-      }
-      window.gapi.client.setToken({ access_token: resp.access_token });
-    },
-  });
-  gisLoaded = true;
-}
-
-export function handleAuthClick() {
-  return new Promise((resolve, reject) => {
-    if (!gapiLoaded || !gisLoaded) {
-      return reject(new Error('Google APIs not yet loaded.'));
-    }
-
-    if (window.gapi.client.getToken() === null) {
-      tokenClient.requestAccessToken({ prompt: 'consent' });
-    }
-    resolve();
-  });
-}
-
-export function handleSignoutClick() {
-  if (!gapiLoaded || !gisLoaded) {
-    console.error('Google APIs not yet loaded.');
-    return;
-  }
-
-  const token = window.gapi.client.getToken();
-  if (token !== null) {
-    window.google.accounts.oauth2.revoke(token.access_token);
-    window.gapi.client.setToken('');
-  }
-}
+let gapiReady = false;
+let gisReady = false;
 
 export function initGoogleApi() {
   return new Promise((resolve, reject) => {
+    const checkAndResolve = () => {
+      if (gapiReady && gisReady) {
+        console.log("SUCCESS: Both GAPI and GIS are initialized.");
+        resolve();
+      }
+    };
+
     const gapiScript = document.createElement('script');
     gapiScript.src = 'https://apis.google.com/js/api.js';
     gapiScript.async = true;
     gapiScript.defer = true;
     gapiScript.onload = () => {
+      console.log("GAPI script loaded. Initializing client...");
       window.gapi.load('client', () => {
         window.gapi.client.init({
           apiKey: API_KEY,
           discoveryDocs: [DISCOVERY_DOC],
         }).then(() => {
-          gapiLoaded = true;
-          if (gisLoaded) resolve();
-        }, reject);
+          console.log("GAPI client initialized.");
+          gapiReady = true;
+          checkAndResolve();
+        }, (error) => {
+          console.error("GAPI client initialization failed:", error);
+          reject(error);
+        });
       });
     };
-    gapiScript.onerror = reject;
+    gapiScript.onerror = (error) => {
+      console.error("Failed to load GAPI script:", error);
+      reject(error);
+    };
     document.body.appendChild(gapiScript);
 
     const gisScript = document.createElement('script');
@@ -93,6 +47,7 @@ export function initGoogleApi() {
     gisScript.async = true;
     gisScript.defer = true;
     gisScript.onload = () => {
+      console.log("GIS script loaded. Initializing token client...");
       tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
@@ -101,13 +56,48 @@ export function initGoogleApi() {
             console.error('Google authentication error:', resp.error);
             return;
           }
-          window.gapi.client.setToken({ access_token: resp.access_token });
+          console.log("Authentication successful. Setting token.");
+          if (window.gapi && window.gapi.client) {
+            window.gapi.client.setToken({ access_token: resp.access_token });
+          } else {
+            console.error("GAPI client not available to set token.");
+          }
         },
       });
-      gisLoaded = true;
-      if (gapiLoaded) resolve();
+      console.log("GIS token client initialized.");
+      gisReady = true;
+      checkAndResolve();
     };
-    gisScript.onerror = reject;
+    gisScript.onerror = (error) => {
+      console.error("Failed to load GIS script:", error);
+      reject(error);
+    };
     document.body.appendChild(gisScript);
+  });
+}
+
+export function handleAuthClick() {
+  return new Promise((resolve, reject) => {
+    if (!gapiReady || !gisReady) {
+      return reject(new Error('Google APIs not yet loaded.'));
+    }
+
+    if (window.gapi.client.getToken() === null) {
+      tokenClient.callback = (resp) => {
+        if (resp.error) {
+          return reject(resp.error);
+        }
+        console.log("Authentication successful. Setting token.");
+        if (window.gapi && window.gapi.client) {
+          window.gapi.client.setToken({ access_token: resp.access_token });
+          resolve();
+        } else {
+          reject(new Error("GAPI client not available to set token."));
+        }
+      };
+      tokenClient.requestAccessToken({ prompt: 'consent' });
+    } else {
+      resolve();
+    }
   });
 }
