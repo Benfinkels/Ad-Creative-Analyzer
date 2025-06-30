@@ -1,4 +1,62 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { google } from 'googleapis';
+import { handleAuthClick, initGoogleApi } from './gapi';
+
+const createPresentation = async (analysis) => {
+  const slides = google.slides('v1');
+  const presentation = await slides.presentations.create({
+    title: 'Ad Analysis Report',
+  });
+
+  const requests = [
+    {
+      createSlide: {
+        objectId: 'title_slide',
+        slideLayoutReference: {
+          predefinedLayout: 'TITLE_SLIDE',
+        },
+      },
+    },
+    {
+      insertText: {
+        objectId: 'title_slide',
+        textToInsert: 'Ad Analysis Report',
+        insertionIndex: 0,
+      },
+    },
+  ];
+
+  await slides.presentations.batchUpdate({
+    presentationId: presentation.data.presentationId,
+    requestBody: {
+      requests,
+    },
+  });
+
+  return presentation.data;
+};
+
+const GoogleSlidesExport = ({ analysis }) => {
+  useEffect(() => {
+    initGoogleApi();
+  }, []);
+
+  const handleExport = async () => {
+    try {
+      await handleAuthClick();
+      const presentation = await createPresentation(analysis);
+      window.open(`https://docs.google.com/presentation/d/${presentation.presentationId}/edit`, '_blank');
+    } catch (error) {
+      console.error('Error exporting to Google Slides:', error);
+    }
+  };
+
+  return (
+    <button className="btn btn-secondary" onClick={handleExport}>
+      Export to Google Slides
+    </button>
+  );
+};
 
 const Score = ({ score }) => {
   let badgeClass = 'bg-secondary';
@@ -59,8 +117,9 @@ const Report = ({ analysis }) => {
 
   return (
     <div className="mt-5 card">
-      <div className="card-header">
+      <div className="card-header d-flex justify-content-between align-items-center">
         <h2>Analysis Report</h2>
+        <GoogleSlidesExport analysis={analysis} />
       </div>
       <div className="card-body">
         {evaluation_summary && (
