@@ -3,6 +3,7 @@ import VideoUpload from './VideoUpload';
 import Report from './Report';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
+import './Report.css';
 
 function App() {
   const [analysis, setAnalysis] = useState(null);

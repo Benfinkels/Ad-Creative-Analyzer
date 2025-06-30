@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { handleAuthClick, initGoogleApi } from './gapi';
+import './Report.css';
 
-const createPresentation = async (analysis) => {
+const createStyledPresentation = async (analysis) => {
   try {
     const slides = window.gapi.client.slides;
     const presentation = await slides.presentations.create({
@@ -9,17 +10,58 @@ const createPresentation = async (analysis) => {
     });
     const presentationId = presentation.result.presentationId;
 
-    // --- Set Title on First Slide ---
+    const COLORS = {
+      white: { rgbColor: { red: 1, green: 1, blue: 1 } },
+      black_g800: { rgbColor: { red: 60/255, green: 64/255, blue: 67/255 } },
+      grey_g700: { rgbColor: { red: 95/255, green: 99/255, blue: 104/255 } },
+      footnote_grey: { rgbColor: { red: 128/255, green: 134/255, blue: 139/255 } },
+    };
+
+    const styleRequest = (objectId, style) => {
+      const requests = [];
+      if (style.fontFamily) {
+        requests.push({
+          updateTextStyle: {
+            objectId,
+            style: { fontFamily: style.fontFamily, foregroundColor: { opaqueColor: style.color } },
+            fields: 'fontFamily,foregroundColor',
+          },
+        });
+      }
+      if (style.fontSize) {
+        requests.push({
+          updateTextStyle: {
+            objectId,
+            style: { fontSize: { magnitude: style.fontSize, unit: 'PT' } },
+            fields: 'fontSize',
+          },
+        });
+      }
+      if (style.bold) {
+        requests.push({
+          updateTextStyle: {
+            objectId,
+            style: { bold: style.bold },
+            fields: 'bold',
+          },
+        });
+      }
+      return requests;
+    };
+
     let pres = await slides.presentations.get({ presentationId });
     let slide = pres.result.slides[0];
     let titleElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'TITLE' || e.shape?.placeholder?.type === 'CENTERED_TITLE');
     let titleId = titleElement.objectId;
+
     await slides.presentations.batchUpdate({
       presentationId,
-      requests: [{ insertText: { objectId: titleId, text: 'Ad Analysis Report' } }],
+      requests: [
+        { insertText: { objectId: titleId, text: 'Ad Analysis Report' } },
+        ...styleRequest(titleId, { fontFamily: 'Google Sans', fontSize: 24, bold: true, color: COLORS.black_g800 }),
+      ],
     });
 
-    // --- Helper to create a new slide and add content ---
     const addContentSlide = async (title, body) => {
       const slideId = `${title.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`;
       await slides.presentations.batchUpdate({
@@ -32,16 +74,18 @@ const createPresentation = async (analysis) => {
       const bodyElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'BODY');
       titleId = titleElement.objectId;
       const bodyId = bodyElement.objectId;
+
       await slides.presentations.batchUpdate({
         presentationId,
         requests: [
           { insertText: { objectId: titleId, text: title } },
+          ...styleRequest(titleId, { fontFamily: 'Google Sans', fontSize: 18, bold: true, color: COLORS.black_g800 }),
           { insertText: { objectId: bodyId, text: body } },
+          ...styleRequest(bodyId, { fontFamily: 'Roboto', fontSize: 10, color: COLORS.grey_g700 }),
         ],
       });
     };
 
-    // --- Create Slides for Each Section ---
     await addContentSlide(
       `Evaluation Summary: ${analysis.evaluation_summary.overall_score}`,
       `Executive Summary: ${analysis.evaluation_summary.executive_summary}\n\nTop Strength: ${analysis.evaluation_summary.top_strength}\n\nTop Opportunity: ${analysis.evaluation_summary.top_opportunity}`
@@ -84,7 +128,7 @@ const GoogleSlidesExport = ({ analysis }) => {
   const handleExport = async () => {
     try {
       await handleAuthClick();
-      const presentation = await createPresentation(analysis);
+      const presentation = await createStyledPresentation(analysis);
       window.open(`https://docs.google.com/presentation/d/${presentation.presentationId}/edit`, '_blank');
     } catch (error) {
       console.error('Error exporting to Google Slides:', error);
@@ -93,26 +137,25 @@ const GoogleSlidesExport = ({ analysis }) => {
   };
 
   if (gapiError) {
-    return <button className="btn btn-danger" disabled>{gapiError}</button>;
+    return <button className="btn-export" disabled>{gapiError}</button>;
   }
 
   if (!isGapiReady) {
-    return <button className="btn btn-secondary" disabled>Loading Export...</button>;
+    return <button className="btn-export" disabled>Loading Export...</button>;
   }
 
   return (
-    <button className="btn btn-secondary" onClick={handleExport}>
+    <button className="btn-export" onClick={handleExport}>
       Export to Google Slides
     </button>
   );
 };
 
 const Score = ({ score }) => {
-  let badgeClass = 'bg-secondary';
-  if (score === 'Excellent') badgeClass = 'bg-success';
-  if (score === 'Good') badgeClass = 'bg-primary';
-  if (score === 'Fair') badgeClass = 'bg-warning text-dark';
-  if (score === 'Poor') badgeClass = 'bg-danger';
+  let badgeClass = 'badge-fair';
+  if (score === 'Excellent') badgeClass = 'badge-excellent';
+  if (score === 'Good') badgeClass = 'badge-good';
+  if (score === 'Poor') badgeClass = 'badge-poor';
 
   return <span className={`badge ${badgeClass}`}>{score}</span>;
 };
@@ -122,31 +165,26 @@ const AssetRequirement = ({ requirement }) => {
   const icon = requirement.status === 'Recommended' ? '✓' : '✗';
 
   return (
-    <li className="list-group-item d-flex justify-content-between align-items-center">
+    <li className="list-group-item">
       <div>
         <strong>{requirement.requirement}:</strong> {requirement.comment}
       </div>
-      <span className={`${statusClass} fs-5`}>{icon} {requirement.status}</span>
+      <span className={`${statusClass}`}>{icon} {requirement.status}</span>
     </li>
   );
 };
 
 const Finding = ({ finding }) => {
-  const relevanceClass = `relevance-${finding.relevance_to_objective?.toLowerCase()}`;
   return (
     <div className="mb-3">
-      <div className="fw-bold">{finding.creative_code}</div>
+      <div className="highlight">{finding.creative_code}</div>
       <div>
-        <span className={`badge ${finding.is_present ? 'bg-success' : 'bg-secondary'}`}>
+        <span className={`badge ${finding.is_present ? 'badge-excellent' : 'badge-fair'}`}>
           {finding.is_present ? 'Present' : 'Not Present'}
         </span>
-        {finding.timestamp && <span className="ms-2 text-muted">({finding.timestamp})</span>}
+        {finding.timestamp && <span className="ms-2 footnote">({finding.timestamp})</span>}
       </div>
       <p className="mb-1 mt-1">{finding.justification}</p>
-      <div className="d-flex align-items-center">
-        <span className="me-2">Relevance to Objective:</span>
-        <span className={`badge ${relevanceClass}`}>{finding.relevance_to_objective}</span>
-      </div>
     </div>
   );
 };
@@ -165,12 +203,12 @@ const Report = ({ analysis }) => {
   } = analysis;
 
   return (
-    <div className="mt-5 card">
-      <div className="card-header d-flex justify-content-between align-items-center">
+    <div className="report-container mt-5 card">
+      <div className="card-header report-header d-flex justify-content-between align-items-center">
         <h2>Analysis Report</h2>
         <GoogleSlidesExport analysis={analysis} />
       </div>
-      <div className="card-body">
+      <div className="card-body report-body">
         {evaluation_summary && (
           <div className="mb-4">
             <h3>Evaluation Summary</h3>
@@ -178,7 +216,7 @@ const Report = ({ analysis }) => {
             <p><strong>Executive Summary:</strong> {evaluation_summary.executive_summary}</p>
             <div className="row">
               <div className="col-md-6">
-                <div className="card bg-light">
+                <div className="card">
                   <div className="card-body">
                     <h5 className="card-title">Top Strength</h5>
                     <p className="card-text">{evaluation_summary.top_strength}</p>
@@ -186,7 +224,7 @@ const Report = ({ analysis }) => {
                 </div>
               </div>
               <div className="col-md-6">
-                <div className="card bg-light">
+                <div className="card">
                   <div className="card-body">
                     <h5 className="card-title">Top Opportunity</h5>
                     <p className="card-text">{evaluation_summary.top_opportunity}</p>

@@ -1,0 +1,133 @@
+/* src/Report.css */
+
+/* Color Palette */
+:root {
+  --blue-g500: #4285f4;
+  --red-g500: #ea4335;
+  --yellow-g500: #fbbc04;
+  --green-g500: #34a853;
+  --black-g800: #3c4043;
+  --grey-g700: #5f6368;
+  --light-grey-g100: #F1F3F4;
+  --white: #ffffff;
+  --footnote-grey: #80868B;
+}
+
+/* Typography */
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;700&display=swap');
+
+.report-container {
+  background-color: var(--white);
+  font-family: 'Roboto', sans-serif;
+  color: var(--grey-g700);
+}
+
+.report-header h2 {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 24pt;
+  font-weight: bold;
+  color: var(--black-g800);
+}
+
+.report-body h3 {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 18pt;
+  font-weight: bold;
+  color: var(--black-g800);
+  margin-bottom: 1rem;
+}
+
+.report-body h4 {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 14pt;
+  font-weight: bold;
+  color: var(--black-g800);
+}
+
+.report-body p, .report-body li {
+  font-family: 'Roboto', sans-serif;
+  font-size: 10pt;
+  color: var(--grey-g700);
+}
+
+.highlight {
+  font-family: 'Google Sans', sans-serif;
+  font-size: 14pt;
+  font-weight: 500;
+  color: var(--black-g800);
+}
+
+.footnote {
+  font-family: 'Roboto', sans-serif;
+  font-size: 6pt;
+  color: var(--footnote-grey);
+}
+
+.card {
+  border: 1px solid var(--light-grey-g100);
+  border-radius: 8px;
+  background-color: var(--white);
+}
+
+.card-header {
+  background-color: var(--light-grey-g100);
+  padding: 1rem;
+  border-bottom: 1px solid var(--light-grey-g100);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-title {
+    font-family: 'Google Sans', sans-serif;
+    font-size: 14pt;
+    font-weight: bold;
+    color: var(--black-g800);
+}
+
+.btn-export {
+  background-color: var(--blue-g500);
+  color: var(--white);
+  font-family: 'Google Sans', sans-serif;
+  font-size: 10pt;
+  font-weight: 500;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-export:hover {
+  opacity: 0.9;
+}
+
+.btn-export:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.badge {
+  display: inline-block;
+  padding: .35em .65em;
+  font-size: .75em;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--white);
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: .25rem;
+}
+
+.badge-excellent { background-color: var(--green-g500); }
+.badge-good { background-color: var(--blue-g500); }
+.badge-fair { background-color: var(--yellow-g500); color: var(--black-g800); }
+.badge-poor { background-color: var(--red-g500); }
+
+.text-success { color: var(--green-g500) !important; }
+.text-warning { color: var(--yellow-g500) !important; }
+
+.list-group-item {
+  border-color: var(--light-grey-g100);
+}
