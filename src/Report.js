@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { handleAuthClick, initGoogleApi } from './gapi';
 import './Report.css';
+import { v4 as uuidv4 } from 'uuid';
+
 
 const createStyledPresentation = async (analysis) => {
   try {
@@ -12,40 +14,77 @@ const createStyledPresentation = async (analysis) => {
 
     const COLORS = {
       white: { rgbColor: { red: 1, green: 1, blue: 1 } },
-      black_g800: { rgbColor: { red: 60/255, green: 64/255, blue: 67/255 } },
-      grey_g700: { rgbColor: { red: 95/255, green: 99/255, blue: 104/255 } },
-      footnote_grey: { rgbColor: { red: 128/255, green: 134/255, blue: 139/255 } },
+      black_g800: { rgbColor: { red: 60 / 255, green: 64 / 255, blue: 67 / 255 } },
+      grey_g700: { rgbColor: { red: 95 / 255, green: 99 / 255, blue: 104 / 255 } },
+      light_grey_g100: { rgbColor: { red: 241 / 255, green: 243 / 255, blue: 244 / 255 } },
+      blue_g500: { rgbColor: { red: 66 / 255, green: 133 / 255, blue: 244 / 255 } },
+      green_g500: { rgbColor: { red: 52 / 255, green: 168 / 255, blue: 82 / 255 } },
+      yellow_g500: { rgbColor: { red: 251 / 255, green: 188 / 255, blue: 4 / 255 } },
+      red_g500: { rgbColor: { red: 234 / 255, green: 67 / 255, blue: 53 / 255 } },
     };
 
-    const styleRequest = (objectId, style) => {
-      const requests = [];
-      if (style.fontFamily) {
-        requests.push({
-          updateTextStyle: {
-            objectId,
-            style: { fontFamily: style.fontFamily, foregroundColor: { opaqueColor: style.color } },
-            fields: 'fontFamily,foregroundColor',
+    const FONT_STYLES = {
+      title: { fontFamily: 'Google Sans', fontSize: 24, bold: true, color: COLORS.black_g800 },
+      slideTitle: { fontFamily: 'Google Sans', fontSize: 18, bold: true, color: COLORS.black_g800 },
+      body: { fontFamily: 'Roboto', fontSize: 10, color: COLORS.grey_g700 },
+      highlight: { fontFamily: 'Google Sans', fontSize: 14, bold: true, color: COLORS.black_g800 },
+      footnote: { fontFamily: 'Roboto', fontSize: 8, color: COLORS.grey_g700 },
+    };
+
+    const createShape = (shapeType, pageId, width, height, x, y, backgroundColor) => ({
+      createShape: {
+        objectId: uuidv4(),
+        shapeType,
+        elementProperties: {
+          pageObjectId: pageId,
+          size: { width: { magnitude: width, unit: 'PT' }, height: { magnitude: height, unit: 'PT' } },
+          transform: {
+            scaleX: 1,
+            scaleY: 1,
+            translateX: x,
+            translateY: y,
+            unit: 'PT',
           },
-        });
+        },
+        shapeProperties: {
+          shapeBackgroundFill: {
+            solidFill: {
+              color: backgroundColor,
+            },
+          },
+        },
+      },
+    });
+
+    const styleText = (objectId, style) => {
+      const requests = [];
+      const textStyle = {};
+      const fields = [];
+
+      if (style.fontFamily) {
+        textStyle.fontFamily = style.fontFamily;
+        fields.push('fontFamily');
       }
       if (style.fontSize) {
-        requests.push({
-          updateTextStyle: {
-            objectId,
-            style: { fontSize: { magnitude: style.fontSize, unit: 'PT' } },
-            fields: 'fontSize',
-          },
-        });
+        textStyle.fontSize = { magnitude: style.fontSize, unit: 'PT' };
+        fields.push('fontSize');
       }
       if (style.bold) {
-        requests.push({
-          updateTextStyle: {
-            objectId,
-            style: { bold: style.bold },
-            fields: 'bold',
-          },
-        });
+        textStyle.bold = style.bold;
+        fields.push('bold');
       }
+      if (style.color) {
+        textStyle.foregroundColor = { opaqueColor: style.color };
+        fields.push('foregroundColor');
+      }
+
+      requests.push({
+        updateTextStyle: {
+          objectId,
+          style: textStyle,
+          fields: fields.join(','),
+        },
+      });
       return requests;
     };
 
@@ -58,12 +97,12 @@ const createStyledPresentation = async (analysis) => {
       presentationId,
       requests: [
         { insertText: { objectId: titleId, text: 'Ad Analysis Report' } },
-        ...styleRequest(titleId, { fontFamily: 'Google Sans', fontSize: 24, bold: true, color: COLORS.black_g800 }),
+        ...styleText(titleId, FONT_STYLES.title),
       ],
     });
 
-    const addContentSlide = async (title, body) => {
-      const slideId = `${title.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`;
+    const addContentSlide = async (title, bodyContent) => {
+      const slideId = uuidv4();
       await slides.presentations.batchUpdate({
         presentationId,
         requests: [{ createSlide: { objectId: slideId, slideLayoutReference: { predefinedLayout: 'TITLE_AND_BODY' } } }],
@@ -75,32 +114,90 @@ const createStyledPresentation = async (analysis) => {
       titleId = titleElement.objectId;
       const bodyId = bodyElement.objectId;
 
-      await slides.presentations.batchUpdate({
-        presentationId,
-        requests: [
-          { insertText: { objectId: titleId, text: title } },
-          ...styleRequest(titleId, { fontFamily: 'Google Sans', fontSize: 18, bold: true, color: COLORS.black_g800 }),
-          { insertText: { objectId: bodyId, text: body } },
-          ...styleRequest(bodyId, { fontFamily: 'Roboto', fontSize: 10, color: COLORS.grey_g700 }),
-        ],
-      });
+      const requests = [
+        { insertText: { objectId: titleId, text: title } },
+        ...styleText(titleId, FONT_STYLES.slideTitle),
+        { insertText: { objectId: bodyId, text: '' } }, // Clear default text
+      ];
+
+      let currentOffset = 0;
+      for (const item of bodyContent) {
+        const text = item.text + '\n';
+        requests.push({
+          insertText: {
+            objectId: bodyId,
+            insertionIndex: currentOffset,
+            text,
+          },
+        });
+        requests.push({
+          updateTextStyle: {
+            objectId: bodyId,
+            style: {
+              fontFamily: item.style.fontFamily || 'Roboto',
+              fontSize: { magnitude: item.style.fontSize || 10, unit: 'PT' },
+              foregroundColor: { opaqueColor: item.style.color || COLORS.grey_g700 },
+              bold: item.style.bold || false,
+            },
+            textRange: {
+              type: 'FIXED_RANGE',
+              startIndex: currentOffset,
+              endIndex: currentOffset + text.length,
+            },
+            fields: 'fontFamily,fontSize,foregroundColor,bold',
+          },
+        });
+        currentOffset += text.length;
+      }
+
+      await slides.presentations.batchUpdate({ presentationId, requests });
     };
 
-    await addContentSlide(
-      `Evaluation Summary: ${analysis.evaluation_summary.overall_score}`,
-      `Executive Summary: ${analysis.evaluation_summary.executive_summary}\n\nTop Strength: ${analysis.evaluation_summary.top_strength}\n\nTop Opportunity: ${analysis.evaluation_summary.top_opportunity}`
-    );
+    // --- Evaluation Summary Slide ---
+    const scoreColor = {
+      'Excellent': COLORS.green_g500,
+      'Good': COLORS.blue_g500,
+      'Fair': COLORS.yellow_g500,
+      'Poor': COLORS.red_g500,
+    }[analysis.evaluation_summary.overall_score];
 
-    const assetReqsBody = analysis.asset_requirements_check.map(req => `${req.requirement}: ${req.status} - ${req.comment}`).join('\n');
+    const summaryBody = [
+      { text: 'Overall Score: ', style: { ...FONT_STYLES.highlight, bold: true } },
+      { text: analysis.evaluation_summary.overall_score, style: { ...FONT_STYLES.highlight, color: scoreColor, bold: true } },
+      { text: `\n\nExecutive Summary: ${analysis.evaluation_summary.executive_summary}`, style: FONT_STYLES.body },
+      { text: `\n\nTop Strength: ${analysis.evaluation_summary.top_strength}`, style: FONT_STYLES.body },
+      { text: `\nTop Opportunity: ${analysis.evaluation_summary.top_opportunity}`, style: FONT_STYLES.body },
+    ];
+    await addContentSlide('Evaluation Summary', summaryBody);
+
+    // --- Asset Requirements Slide ---
+    const assetReqsBody = analysis.asset_requirements_check.flatMap(req => [
+      { text: `${req.requirement}: `, style: { ...FONT_STYLES.body, bold: true } },
+      { text: `${req.status} - ${req.comment}`, style: { ...FONT_STYLES.body, color: req.status === 'Recommended' ? COLORS.green_g500 : COLORS.yellow_g500 } },
+      { text: '\n', style: {} }
+    ]);
     await addContentSlide('Asset Requirements Check', assetReqsBody);
 
+    // --- ABCD Analysis Slides ---
     for (const [pillar, data] of Object.entries(analysis.abcd_analysis)) {
-      const findingsBody = data.findings.map(finding => `${finding.creative_code} (${finding.timestamp}): ${finding.justification}`).join('\n\n');
-      await addContentSlide(`ABCD Analysis: ${pillar.toUpperCase()}`, `Summary: ${data.summary}\n\n${findingsBody}`);
+      const findingsBody = [
+        { text: `Summary: ${data.summary}\n\n`, style: { ...FONT_STYLES.body, bold: true } },
+        ...data.findings.flatMap(finding => [
+          { text: `${finding.creative_code} `, style: FONT_STYLES.highlight },
+          { text: `(${finding.timestamp})\n`, style: FONT_STYLES.footnote },
+          { text: `${finding.justification}\n\n`, style: FONT_STYLES.body },
+        ]),
+      ];
+      await addContentSlide(`ABCD Analysis: ${pillar.toUpperCase()}`, findingsBody);
     }
 
-    const recommendationsBody = analysis.strategic_recommendations.map(rec => `${rec.recommendation}: ${rec.rationale}`).join('\n\n');
+    // --- Strategic Recommendations Slide ---
+    const recommendationsBody = analysis.strategic_recommendations.flatMap(rec => [
+        { text: `${rec.recommendation}\n`, style: { ...FONT_STYLES.body, bold: true } },
+        { text: `${rec.rationale}\n\n`, style: FONT_STYLES.body },
+    ]);
     await addContentSlide('Strategic Recommendations', recommendationsBody);
+
 
     return presentation.result;
   } catch (error) {
