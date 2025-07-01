@@ -1,6 +1,7 @@
 {
   "name": "ad-analyzer",
   "version": "0.1.0",
+  "author": "Ben Finkels",
   "private": true,
   "proxy": "http://localhost:3002",
   "dependencies": {
