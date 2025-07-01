@@ -310,7 +310,7 @@ const PDFExport = ({ analysis }) => {
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
-      pagebreak: { mode: 'avoid-all', before: '.pdf-page' },
+      pagebreak: { mode: ['css', 'avoid-all'] },
     };
     html2pdf().set(opt).from(element).save();
   };
