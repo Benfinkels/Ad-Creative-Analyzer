@@ -90,7 +90,7 @@ const createStyledPresentation = async (analysis) => {
     let slide = pres.result.slides[0];
     let titleElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'TITLE' || e.shape?.placeholder?.type === 'CENTERED_TITLE');
     let titleId = titleElement.objectId;
-        const logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png';
+        const logoUrl = 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png';
 
 
     await slides.presentations.batchUpdate({
