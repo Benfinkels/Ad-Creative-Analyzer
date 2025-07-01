@@ -344,56 +344,58 @@ const Report = ({ analysis }) => {
         </div>
       </div>
       <div id="report-body" className="report-body container">
-        {evaluation_summary && (
-          <div className="mb-4 card page-break-inside-avoid">
-            <div className="card-header"><h3>Evaluation Summary</h3></div>
-            <div className="card-body">
-              <p><strong>Overall Score:</strong> <Score score={evaluation_summary.overall_score} /></p>
-              <p><strong>Executive Summary:</strong> {evaluation_summary.executive_summary}</p>
-              <div className="row">
-                <div className="col-md-6">
-                  <div className="card h-100">
-                    <div className="card-body">
-                      <h5 className="card-title">Top Strength</h5>
-                      <p className="card-text">{evaluation_summary.top_strength}</p>
+        <div className="pdf-page">
+          {evaluation_summary && (
+            <div className="mb-4 card keep-together">
+              <div className="card-header"><h3>Evaluation Summary</h3></div>
+              <div className="card-body">
+                <p><strong>Overall Score:</strong> <Score score={evaluation_summary.overall_score} /></p>
+                <p><strong>Executive Summary:</strong> {evaluation_summary.executive_summary}</p>
+                <div className="row">
+                  <div className="col-md-6">
+                    <div className="card h-100">
+                      <div className="card-body">
+                        <h5 className="card-title">Top Strength</h5>
+                        <p className="card-text">{evaluation_summary.top_strength}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="col-md-6">
-                  <div className="card h-100">
-                    <div className="card-body">
-                      <h5 className="card-title">Top Opportunity</h5>
-                      <p className="card-text">{evaluation_summary.top_opportunity}</p>
+                  <div className="col-md-6">
+                    <div className="card h-100">
+                      <div className="card-body">
+                        <h5 className="card-title">Top Opportunity</h5>
+                        <p className="card-text">{evaluation_summary.top_opportunity}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {marketing_objective && (
-          <div className="mb-4 alert alert-info page-break-inside-avoid">
-            <h4>Marketing Objective: <span className="fw-normal">{marketing_objective}</span></h4>
-          </div>
-        )}
+          {marketing_objective && (
+            <div className="mb-4 alert alert-info keep-together">
+              <h4>Marketing Objective: <span className="fw-normal">{marketing_objective}</span></h4>
+            </div>
+          )}
 
-        {asset_requirements_check && (
-          <div className="mb-4 card page-break-inside-avoid">
-            <div className="card-header"><h3>Asset Requirements Check</h3></div>
-            <ul className="list-group list-group-flush">
-              {asset_requirements_check.map((req, index) => (
-                <AssetRequirement key={index} requirement={req} />
-              ))}
-            </ul>
-          </div>
-        )}
+          {asset_requirements_check && (
+            <div className="mb-4 card keep-together">
+              <div className="card-header"><h3>Asset Requirements Check</h3></div>
+              <ul className="list-group list-group-flush">
+                {asset_requirements_check.map((req, index) => (
+                  <AssetRequirement key={index} requirement={req} />
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
 
         {abcd_analysis && (
-          <div className="mb-4 page-break-before">
+          <div className="pdf-page">
             <h3>ABCD Analysis</h3>
             {Object.entries(abcd_analysis).map(([pillar, data]) => (
-              <div key={pillar} className="card mb-3 page-break-inside-avoid">
+              <div key={pillar} className="card mb-3 keep-together">
                 <div className="card-header text-capitalize"><h5>{pillar}</h5></div>
                 <div className="card-body">
                   <p className="fst-italic">{data.summary}</p>
@@ -411,16 +413,18 @@ const Report = ({ analysis }) => {
         )}
 
         {strategic_recommendations && (
-          <div className="card page-break-before page-break-inside-avoid">
-            <div className="card-header"><h3>Strategic Recommendations</h3></div>
-            <ul className="list-group list-group-flush">
-              {strategic_recommendations.map((rec, index) => (
-                <li key={index} className="list-group-item">
-                  <p className="fw-bold mb-1">{rec.recommendation}</p>
-                  <p className="mb-0">{rec.rationale}</p>
-                </li>
-              ))}
-            </ul>
+          <div className="pdf-page">
+            <div className="card keep-together">
+              <div className="card-header"><h3>Strategic Recommendations</h3></div>
+              <ul className="list-group list-group-flush">
+                {strategic_recommendations.map((rec, index) => (
+                  <li key={index} className="list-group-item">
+                    <p className="fw-bold mb-1">{rec.recommendation}</p>
+                    <p className="mb-0">{rec.rationale}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
       </div>

@@ -120,23 +120,24 @@ body {
     print-color-adjust: exact;
   }
 
-  .page-break-before {
+  .no-print {
+    display: none !important;
+  }
+
+  .pdf-page {
     page-break-before: always;
   }
 
-  .page-break-after {
-    page-break-after: always;
-  }
-
-  .page-break-inside-avoid {
-    page-break-inside: avoid;
+  #report-body > .pdf-page:first-child {
+    page-break-before: auto;
   }
 
   .keep-together {
     page-break-inside: avoid;
   }
 
-  .no-print {
-    display: none !important;
+  h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
   }
 }
+
