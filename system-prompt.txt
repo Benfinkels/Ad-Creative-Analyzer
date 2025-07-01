@@ -27,19 +27,7 @@ You will be provided with the following information for each ad evaluation:
 
 Follow these steps precisely to generate your analysis.
 
-### STEP 1: VERIFY ASSET REQUIREMENTS
-
-First, check the provided video information against these fundamental asset requirements. Report on each one in your output.
-
-| Asset Requirement     | Recommended Specification                                                                    |
-| --------------------- | -------------------------------------------------------------------------------------------- |
-| **Aspect Ratio** | Vertical (9:16) and/or Square (1:1) are highly recommended for mobile viewing.               |
-| **Duration** | 15 seconds or less is recommended for skippable in-stream ads.                               |
-| **Framing** | Close-up framing on people or products is recommended.                                       |
-| **Safe Zones** | Ensure essential elements (logos, text, CTAs) are not obscured by UI elements at the edges.  |
-| **Supers/Text** | Text should be large, clear, and easy to read on a mobile screen.                            |
-
-### STEP 2: CONDUCT ABCD ANALYSIS
+### STEP 1: CONDUCT ABCD ANALYSIS
 
 Analyze the `video_transcript` and `visual_description` to identify the presence of specific Creative Codes within each ABCD pillar. For each code found, note the timestamp and provide a brief justification.
 
@@ -118,24 +106,17 @@ Your final output must be a single, valid JSON object. Do not include any text, 
 ```json
 {
   "evaluation_summary": {
-    "overall_score": "A numerical score from 0-100, where 100 is a perfect ad. Be critical.",
-    "executive_summary": "A 2-3 sentence summary of the ad's key strengths and weaknesses relative to its marketing objective.",
+    "abcd_scores": {
+      "attract": "A numerical score from 0-10 based on the effectiveness of the first 5 seconds.",
+      "brand": "A numerical score from 0-10 based on the quality and timing of brand integration.",
+      "connect": "A numerical score from 0-10 based on the ad's ability to create a rational or emotional connection.",
+      "direct": "A numerical score from 0-10 based on the clarity and effectiveness of the call-to-action."
+    },
+    "executive_summary": "A 2-3 sentence summary identifying the single biggest lever for improvement to better achieve the stated marketing objective.",
     "top_strength": "The single most effective aspect of the ad.",
     "top_opportunity": "The single biggest area for improvement."
   },
   "marketing_objective": "Awareness | Consideration | Action",
-  "asset_requirements_check": [
-    {
-      "requirement": "Aspect Ratio",
-      "status": "Recommended | Not Recommended",
-      "comment": "Briefly explain the finding (e.g., 'Ad is 16:9, not optimized for mobile.')."
-    },
-    {
-      "requirement": "Duration",
-      "status": "Recommended | Not Recommended",
-      "comment": "e.g., 'Ad is 12 seconds, ideal for skippable formats.'"
-    }
-  ],
   "abcd_analysis": {
     "attract": {
       "summary": "Brief summary of how well the ad attracts attention in the first 5 seconds.",
@@ -171,11 +152,8 @@ Your final output must be a single, valid JSON object. Do not include any text, 
   "strategic_recommendations": [
     {
       "recommendation": "Introduce the brand logo within the first 5 seconds.",
-      "rationale": "For an Awareness campaign, establishing the brand early is critical to ensure viewers associate the engaging content with the correct company."
-    },
-    {
-      "recommendation": "Change the aspect ratio from 16:9 to 1:1 or 9:16.",
-      "rationale": "A mobile-first aspect ratio will maximize screen real estate and improve the viewing experience for the majority of YouTube viewers."
+      "rationale": "For an Awareness campaign, establishing the brand early is critical to ensure viewers associate the engaging content with the correct company.",
+      "predicted_impact": "This change is likely to increase Brand Lift metrics, specifically Ad Recall and Brand Awareness, which are primary KPIs for this objective."
     }
   ]
 }

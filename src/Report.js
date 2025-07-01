@@ -164,20 +164,16 @@ const createStyledPresentation = async (analysis) => {
     }[analysis.evaluation_summary.overall_score];
 
     const summaryBody = [
-      { text: 'Overall Score: ', style: { ...FONT_STYLES.highlight, bold: true } },
-      { text: analysis.evaluation_summary.overall_score, style: { ...FONT_STYLES.highlight, color: scoreColor, bold: true } },
-      { text: `\nExecutive Summary: ${analysis.evaluation_summary.executive_summary}`, style: FONT_STYLES.body },
+      { text: 'ABCD Scores:\n', style: { ...FONT_STYLES.highlight, bold: true } },
+      { text: `Attract: ${analysis.evaluation_summary.abcd_scores.attract}/10\n`, style: FONT_STYLES.body },
+      { text: `Brand: ${analysis.evaluation_summary.abcd_scores.brand}/10\n`, style: FONT_STYLES.body },
+      { text: `Connect: ${analysis.evaluation_summary.abcd_scores.connect}/10\n`, style: FONT_STYLES.body },
+      { text: `Direct: ${analysis.evaluation_summary.abcd_scores.direct}/10\n\n`, style: FONT_STYLES.body },
+      { text: `Executive Summary: ${analysis.evaluation_summary.executive_summary}`, style: FONT_STYLES.body },
       { text: `\nTop Strength: ${analysis.evaluation_summary.top_strength}`, style: FONT_STYLES.body },
       { text: `\nTop Opportunity: ${analysis.evaluation_summary.top_opportunity}`, style: FONT_STYLES.body },
     ];
     await addContentSlide('Evaluation Summary', summaryBody);
-
-    // --- Asset Requirements Slide ---
-    const assetReqsBody = analysis.asset_requirements_check.flatMap(req => [
-      { text: `${req.requirement}: `, style: { ...FONT_STYLES.body, bold: true } },
-      { text: `${req.status} - ${req.comment}`, style: { ...FONT_STYLES.body, color: req.status === 'Recommended' ? COLORS.green_g500 : COLORS.yellow_g500 } },
-    ]);
-    await addContentSlide('Asset Requirements Check', assetReqsBody);
 
     // --- ABCD Analysis Slides ---
     for (const [pillar, data] of Object.entries(analysis.abcd_analysis)) {
@@ -194,8 +190,13 @@ const createStyledPresentation = async (analysis) => {
 
     // --- Strategic Recommendations Slide ---
     const recommendationsBody = analysis.strategic_recommendations.flatMap(rec => [
-        { text: `${rec.recommendation}\n`, style: { ...FONT_STYLES.body, bold: true } },
-        { text: `${rec.rationale}\n`, style: FONT_STYLES.body },
+        { text: `${rec.recommendation}
+`, style: { ...FONT_STYLES.body, bold: true } },
+        { text: `${rec.rationale}
+`, style: FONT_STYLES.body },
+        { text: `${rec.predicted_impact}
+
+`, style: { ...FONT_STYLES.footnote, color: COLORS.grey_g700 } },
     ]);
     await addContentSlide('Strategic Recommendations', recommendationsBody);
 
@@ -249,40 +250,39 @@ const GoogleSlidesExport = ({ analysis }) => {
   );
 };
 
-const Score = ({ score }) => {
-  let scoreColor = '#dc3545'; // Poor
-  if (score >= 90) {
-    scoreColor = '#198754'; // Excellent
-  } else if (score >= 70) {
-    scoreColor = '#4285f4'; // Good
-  } else if (score >= 50) {
-    scoreColor = '#fbbc04'; // Fair
+const Score = ({ scores }) => {
+  if (!scores) {
+    return null; // Don't render anything if scores aren't available yet
   }
 
-  return (
-    <span style={{
-      color: scoreColor,
-      fontWeight: 'bold',
-      fontSize: '1.2em'
-    }}>
-      {score}/100
-    </span>
-  );
-};
-
-const AssetRequirement = ({ requirement }) => {
-  const statusStyle = {
-    color: requirement.status === 'Recommended' ? 'var(--green-g500)' : 'var(--yellow-g500)',
-    fontWeight: 'bold',
+  const scoreBox = (label, score) => {
+    let scoreColor = '#dc3545'; // Poor
+    if (score >= 9) {
+      scoreColor = '#198754'; // Excellent
+    } else if (score >= 7) {
+      scoreColor = '#4285f4'; // Good
+    } else if (score >= 5) {
+      scoreColor = '#fbbc04'; // Fair
+    }
+    return (
+      <div className="col-md-3 text-center">
+        <div className="card h-100">
+          <div className="card-body">
+            <h5 className="card-title">{label}</h5>
+            <p className="card-text" style={{ color: scoreColor, fontSize: '2em', fontWeight: 'bold' }}>{score}</p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <li className="list-group-item d-flex justify-content-between align-items-center">
-      <div>
-        <strong>{requirement.requirement}:</strong> {requirement.comment}
-      </div>
-      <span style={statusStyle}>{requirement.status}</span>
-    </li>
+    <div className="row">
+      {scoreBox('Attract', scores.attract)}
+      {scoreBox('Brand', scores.brand)}
+      {scoreBox('Connect', scores.connect)}
+      {scoreBox('Direct', scores.direct)}
+    </div>
   );
 };
 
@@ -352,9 +352,9 @@ const Report = ({ analysis }) => {
             <div className="mb-4 card keep-together">
               <div className="card-header"><h3>Evaluation Summary</h3></div>
               <div className="card-body">
-                <p><strong>Overall Score:</strong> <Score score={evaluation_summary.overall_score} /></p>
                 <p><strong>Executive Summary:</strong> {evaluation_summary.executive_summary}</p>
-                <div className="row">
+              <Score scores={evaluation_summary.abcd_scores} />
+              <div className="row mt-3">
                   <div className="col-md-6">
                     <div className="card h-100">
                       <div className="card-body">
@@ -379,17 +379,6 @@ const Report = ({ analysis }) => {
           {marketing_objective && (
             <div className="mb-4 alert alert-info keep-together">
               <h4>Marketing Objective: <span className="fw-normal">{marketing_objective}</span></h4>
-            </div>
-          )}
-
-          {asset_requirements_check && (
-            <div className="mb-4 card keep-together">
-              <div className="card-header"><h3>Asset Requirements Check</h3></div>
-              <ul className="list-group list-group-flush">
-                {asset_requirements_check.map((req, index) => (
-                  <AssetRequirement key={index} requirement={req} />
-                ))}
-              </ul>
             </div>
           )}
         </div>
@@ -422,9 +411,10 @@ const Report = ({ analysis }) => {
               <ul className="list-group list-group-flush">
                 {strategic_recommendations.map((rec, index) => (
                   <li key={index} className="list-group-item">
-                    <p className="fw-bold mb-1">{rec.recommendation}</p>
-                    <p className="mb-0">{rec.rationale}</p>
-                  </li>
+                  <p className="fw-bold mb-1">{rec.recommendation}</p>
+                  <p className="mb-1">{rec.rationale}</p>
+                  <p className="mb-0 fst-italic text-muted">{rec.predicted_impact}</p>
+                </li>
                 ))}
               </ul>
             </div>
