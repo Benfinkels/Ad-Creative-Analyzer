@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { handleAuthClick, initGoogleApi } from './gapi';
 import './Report.css';
 import { v4 as uuidv4 } from 'uuid';
+import html2pdf from 'html2pdf.js';
 
 
 const createStyledPresentation = async (analysis) => {
@@ -300,6 +301,26 @@ const Finding = ({ finding }) => {
   );
 };
 
+const PDFExport = ({ analysis }) => {
+  const handleExport = () => {
+    const element = document.getElementById('report-body');
+    const opt = {
+      margin: 0.5,
+      filename: 'ad-analysis-report.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+    };
+    html2pdf().set(opt).from(element).save();
+  };
+
+  return (
+    <button className="btn-export ms-2" onClick={handleExport}>
+      Download PDF
+    </button>
+  );
+};
+
 const Report = ({ analysis }) => {
   if (!analysis) {
     return null;
@@ -315,13 +336,16 @@ const Report = ({ analysis }) => {
 
   return (
     <div className="report-container mt-5">
-      <div className="report-header d-flex justify-content-between align-items-center p-3 mb-4 bg-light border-bottom">
+      <div className="report-header d-flex justify-content-between align-items-center p-3 mb-4 bg-light border-bottom no-print">
         <h2>Analysis Report</h2>
-        <GoogleSlidesExport analysis={analysis} />
+        <div>
+          <GoogleSlidesExport analysis={analysis} />
+          <PDFExport analysis={analysis} />
+        </div>
       </div>
-      <div className="report-body container">
+      <div id="report-body" className="report-body container">
         {evaluation_summary && (
-          <div className="mb-4 card">
+          <div className="mb-4 card page-break-inside-avoid">
             <div className="card-header"><h3>Evaluation Summary</h3></div>
             <div className="card-body">
               <p><strong>Overall Score:</strong> <Score score={evaluation_summary.overall_score} /></p>
@@ -349,13 +373,13 @@ const Report = ({ analysis }) => {
         )}
 
         {marketing_objective && (
-          <div className="mb-4 alert alert-info">
+          <div className="mb-4 alert alert-info page-break-inside-avoid">
             <h4>Marketing Objective: <span className="fw-normal">{marketing_objective}</span></h4>
           </div>
         )}
 
         {asset_requirements_check && (
-          <div className="mb-4 card">
+          <div className="mb-4 card page-break-inside-avoid">
             <div className="card-header"><h3>Asset Requirements Check</h3></div>
             <ul className="list-group list-group-flush">
               {asset_requirements_check.map((req, index) => (
@@ -366,10 +390,10 @@ const Report = ({ analysis }) => {
         )}
 
         {abcd_analysis && (
-          <div className="mb-4">
+          <div className="mb-4 page-break-before">
             <h3>ABCD Analysis</h3>
             {Object.entries(abcd_analysis).map(([pillar, data]) => (
-              <div key={pillar} className="card mb-3">
+              <div key={pillar} className="card mb-3 page-break-inside-avoid">
                 <div className="card-header text-capitalize"><h5>{pillar}</h5></div>
                 <div className="card-body">
                   <p className="fst-italic">{data.summary}</p>
@@ -387,7 +411,7 @@ const Report = ({ analysis }) => {
         )}
 
         {strategic_recommendations && (
-          <div className="card">
+          <div className="card page-break-before page-break-inside-avoid">
             <div className="card-header"><h3>Strategic Recommendations</h3></div>
             <ul className="list-group list-group-flush">
               {strategic_recommendations.map((rec, index) => (
