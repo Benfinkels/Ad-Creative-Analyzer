@@ -310,6 +310,7 @@ const PDFExport = ({ analysis }) => {
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+      pagebreak: { mode: 'avoid-all', before: '.pdf-page' },
     };
     html2pdf().set(opt).from(element).save();
   };
@@ -393,7 +394,7 @@ const Report = ({ analysis }) => {
 
         {abcd_analysis && (
           <div className="pdf-page">
-            <h3>ABCD Analysis</h3>
+            <h3 className="heading-keep-with-next">ABCD Analysis</h3>
             {Object.entries(abcd_analysis).map(([pillar, data]) => (
               <div key={pillar} className="card mb-3 keep-together">
                 <div className="card-header text-capitalize"><h5>{pillar}</h5></div>
