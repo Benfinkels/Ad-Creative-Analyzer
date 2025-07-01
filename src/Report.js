@@ -31,26 +31,23 @@ const createStyledPresentation = async (analysis) => {
       footnote: { fontFamily: 'Roboto', fontSize: 8, color: COLORS.grey_g700 },
     };
 
-    const createShape = (shapeType, pageId, width, height, x, y, backgroundColor) => ({
-      createShape: {
-        objectId: uuidv4(),
-        shapeType,
+    
+
+    const createImage = (url, pageId, width, height, x, y) => ({
+      createImage: {
+        url,
         elementProperties: {
           pageObjectId: pageId,
-          size: { width: { magnitude: width, unit: 'PT' }, height: { magnitude: height, unit: 'PT' } },
+          size: {
+            width: { magnitude: width, unit: 'PT' },
+            height: { magnitude: height, unit: 'PT' },
+          },
           transform: {
             scaleX: 1,
             scaleY: 1,
             translateX: x,
             translateY: y,
             unit: 'PT',
-          },
-        },
-        shapeProperties: {
-          shapeBackgroundFill: {
-            solidFill: {
-              color: backgroundColor,
-            },
           },
         },
       },
@@ -92,12 +89,15 @@ const createStyledPresentation = async (analysis) => {
     let slide = pres.result.slides[0];
     let titleElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'TITLE' || e.shape?.placeholder?.type === 'CENTERED_TITLE');
     let titleId = titleElement.objectId;
+        const logoUrl = 'https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png';
+
 
     await slides.presentations.batchUpdate({
       presentationId,
       requests: [
         { insertText: { objectId: titleId, text: 'Ad Analysis Report' } },
         ...styleText(titleId, FONT_STYLES.title),
+        createImage(logoUrl, slide.objectId, 100, 100, 450, 20),
       ],
     });
 
@@ -118,6 +118,7 @@ const createStyledPresentation = async (analysis) => {
         { insertText: { objectId: titleId, text: title } },
         ...styleText(titleId, FONT_STYLES.slideTitle),
         { insertText: { objectId: bodyId, text: '' } }, // Clear default text
+        createImage(logoUrl, slide.objectId, 50, 50, 500, 10),
       ];
 
       let currentOffset = 0;
@@ -164,8 +165,8 @@ const createStyledPresentation = async (analysis) => {
     const summaryBody = [
       { text: 'Overall Score: ', style: { ...FONT_STYLES.highlight, bold: true } },
       { text: analysis.evaluation_summary.overall_score, style: { ...FONT_STYLES.highlight, color: scoreColor, bold: true } },
-      { text: `\n\nExecutive Summary: ${analysis.evaluation_summary.executive_summary}`, style: FONT_STYLES.body },
-      { text: `\n\nTop Strength: ${analysis.evaluation_summary.top_strength}`, style: FONT_STYLES.body },
+      { text: `\nExecutive Summary: ${analysis.evaluation_summary.executive_summary}`, style: FONT_STYLES.body },
+      { text: `\nTop Strength: ${analysis.evaluation_summary.top_strength}`, style: FONT_STYLES.body },
       { text: `\nTop Opportunity: ${analysis.evaluation_summary.top_opportunity}`, style: FONT_STYLES.body },
     ];
     await addContentSlide('Evaluation Summary', summaryBody);
@@ -174,18 +175,17 @@ const createStyledPresentation = async (analysis) => {
     const assetReqsBody = analysis.asset_requirements_check.flatMap(req => [
       { text: `${req.requirement}: `, style: { ...FONT_STYLES.body, bold: true } },
       { text: `${req.status} - ${req.comment}`, style: { ...FONT_STYLES.body, color: req.status === 'Recommended' ? COLORS.green_g500 : COLORS.yellow_g500 } },
-      { text: '\n', style: {} }
     ]);
     await addContentSlide('Asset Requirements Check', assetReqsBody);
 
     // --- ABCD Analysis Slides ---
     for (const [pillar, data] of Object.entries(analysis.abcd_analysis)) {
       const findingsBody = [
-        { text: `Summary: ${data.summary}\n\n`, style: { ...FONT_STYLES.body, bold: true } },
+        { text: `Summary: ${data.summary}\n`, style: { ...FONT_STYLES.body, bold: true } },
         ...data.findings.flatMap(finding => [
           { text: `${finding.creative_code} `, style: FONT_STYLES.highlight },
           { text: `(${finding.timestamp})\n`, style: FONT_STYLES.footnote },
-          { text: `${finding.justification}\n\n`, style: FONT_STYLES.body },
+          { text: `${finding.justification}\n`, style: FONT_STYLES.body },
         ]),
       ];
       await addContentSlide(`ABCD Analysis: ${pillar.toUpperCase()}`, findingsBody);
@@ -194,7 +194,7 @@ const createStyledPresentation = async (analysis) => {
     // --- Strategic Recommendations Slide ---
     const recommendationsBody = analysis.strategic_recommendations.flatMap(rec => [
         { text: `${rec.recommendation}\n`, style: { ...FONT_STYLES.body, bold: true } },
-        { text: `${rec.rationale}\n\n`, style: FONT_STYLES.body },
+        { text: `${rec.rationale}\n`, style: FONT_STYLES.body },
     ]);
     await addContentSlide('Strategic Recommendations', recommendationsBody);
 
@@ -249,39 +249,53 @@ const GoogleSlidesExport = ({ analysis }) => {
 };
 
 const Score = ({ score }) => {
-  let badgeClass = 'badge-fair';
-  if (score === 'Excellent') badgeClass = 'badge-excellent';
-  if (score === 'Good') badgeClass = 'badge-good';
-  if (score === 'Poor') badgeClass = 'badge-poor';
+  const scoreColor = {
+    'Excellent': '#34a853',
+    'Good': '#4285f4',
+    'Fair': '#fbbc04',
+    'Poor': '#ea4335',
+  }[score];
 
-  return <span className={`badge ${badgeClass}`}>{score}</span>;
+  return (
+    <span style={{
+      color: scoreColor,
+      fontWeight: 'bold',
+      fontSize: '1.2em'
+    }}>
+      {score}
+    </span>
+  );
 };
 
 const AssetRequirement = ({ requirement }) => {
-  const statusClass = requirement.status === 'Recommended' ? 'text-success' : 'text-warning';
-  const icon = requirement.status === 'Recommended' ? '✓' : '✗';
+  const statusStyle = {
+    color: requirement.status === 'Recommended' ? 'var(--green-g500)' : 'var(--yellow-g500)',
+    fontWeight: 'bold',
+  };
 
   return (
-    <li className="list-group-item">
+    <li className="list-group-item d-flex justify-content-between align-items-center">
       <div>
         <strong>{requirement.requirement}:</strong> {requirement.comment}
       </div>
-      <span className={`${statusClass}`}>{icon} {requirement.status}</span>
+      <span style={statusStyle}>{requirement.status}</span>
     </li>
   );
 };
 
 const Finding = ({ finding }) => {
   return (
-    <div className="mb-3">
-      <div className="highlight">{finding.creative_code}</div>
-      <div>
-        <span className={`badge ${finding.is_present ? 'badge-excellent' : 'badge-fair'}`}>
-          {finding.is_present ? 'Present' : 'Not Present'}
-        </span>
-        {finding.timestamp && <span className="ms-2 footnote">({finding.timestamp})</span>}
+    <div className="card mb-3">
+      <div className="card-body">
+        <h5 className="card-title highlight">{finding.creative_code}</h5>
+        <p className="card-text">{finding.justification}</p>
+        <p className="card-text">
+          <small className="text-muted">
+            {finding.is_present ? 'Present' : 'Not Present'}
+            {finding.timestamp && ` (${finding.timestamp})`}
+          </small>
+        </p>
       </div>
-      <p className="mb-1 mt-1">{finding.justification}</p>
     </div>
   );
 };
@@ -300,31 +314,33 @@ const Report = ({ analysis }) => {
   } = analysis;
 
   return (
-    <div className="report-container mt-5 card">
-      <div className="card-header report-header d-flex justify-content-between align-items-center">
+    <div className="report-container mt-5">
+      <div className="report-header d-flex justify-content-between align-items-center p-3 mb-4 bg-light border-bottom">
         <h2>Analysis Report</h2>
         <GoogleSlidesExport analysis={analysis} />
       </div>
-      <div className="card-body report-body">
+      <div className="report-body container">
         {evaluation_summary && (
-          <div className="mb-4">
-            <h3>Evaluation Summary</h3>
-            <p><strong>Overall Score:</strong> <Score score={evaluation_summary.overall_score} /></p>
-            <p><strong>Executive Summary:</strong> {evaluation_summary.executive_summary}</p>
-            <div className="row">
-              <div className="col-md-6">
-                <div className="card">
-                  <div className="card-body">
-                    <h5 className="card-title">Top Strength</h5>
-                    <p className="card-text">{evaluation_summary.top_strength}</p>
+          <div className="mb-4 card">
+            <div className="card-header"><h3>Evaluation Summary</h3></div>
+            <div className="card-body">
+              <p><strong>Overall Score:</strong> <Score score={evaluation_summary.overall_score} /></p>
+              <p><strong>Executive Summary:</strong> {evaluation_summary.executive_summary}</p>
+              <div className="row">
+                <div className="col-md-6">
+                  <div className="card h-100">
+                    <div className="card-body">
+                      <h5 className="card-title">Top Strength</h5>
+                      <p className="card-text">{evaluation_summary.top_strength}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="col-md-6">
-                <div className="card">
-                  <div className="card-body">
-                    <h5 className="card-title">Top Opportunity</h5>
-                    <p className="card-text">{evaluation_summary.top_opportunity}</p>
+                <div className="col-md-6">
+                  <div className="card h-100">
+                    <div className="card-body">
+                      <h5 className="card-title">Top Opportunity</h5>
+                      <p className="card-text">{evaluation_summary.top_opportunity}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -333,15 +349,15 @@ const Report = ({ analysis }) => {
         )}
 
         {marketing_objective && (
-          <div className="mb-4">
+          <div className="mb-4 alert alert-info">
             <h4>Marketing Objective: <span className="fw-normal">{marketing_objective}</span></h4>
           </div>
         )}
 
         {asset_requirements_check && (
-          <div className="mb-4">
-            <h3>Asset Requirements Check</h3>
-            <ul className="list-group">
+          <div className="mb-4 card">
+            <div className="card-header"><h3>Asset Requirements Check</h3></div>
+            <ul className="list-group list-group-flush">
               {asset_requirements_check.map((req, index) => (
                 <AssetRequirement key={index} requirement={req} />
               ))}
@@ -354,9 +370,9 @@ const Report = ({ analysis }) => {
             <h3>ABCD Analysis</h3>
             {Object.entries(abcd_analysis).map(([pillar, data]) => (
               <div key={pillar} className="card mb-3">
-                <div className="card-header text-capitalize">{pillar}</div>
+                <div className="card-header text-capitalize"><h5>{pillar}</h5></div>
                 <div className="card-body">
-                  <p><em>{data.summary}</em></p>
+                  <p className="fst-italic">{data.summary}</p>
                   {data.findings?.length > 0 ? (
                     data.findings.map((finding, index) => (
                       <Finding key={index} finding={finding} />
@@ -371,12 +387,12 @@ const Report = ({ analysis }) => {
         )}
 
         {strategic_recommendations && (
-          <div>
-            <h3>Strategic Recommendations</h3>
-            <ul className="list-group">
+          <div className="card">
+            <div className="card-header"><h3>Strategic Recommendations</h3></div>
+            <ul className="list-group list-group-flush">
               {strategic_recommendations.map((rec, index) => (
                 <li key={index} className="list-group-item">
-                  <p className="fw-bold">{rec.recommendation}</p>
+                  <p className="fw-bold mb-1">{rec.recommendation}</p>
                   <p className="mb-0">{rec.rationale}</p>
                 </li>
               ))}
