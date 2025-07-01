@@ -250,12 +250,14 @@ const GoogleSlidesExport = ({ analysis }) => {
 };
 
 const Score = ({ score }) => {
-  const scoreColor = {
-    'Excellent': '#34a853',
-    'Good': '#4285f4',
-    'Fair': '#fbbc04',
-    'Poor': '#ea4335',
-  }[score];
+  let scoreColor = '#dc3545'; // Poor
+  if (score >= 90) {
+    scoreColor = '#198754'; // Excellent
+  } else if (score >= 70) {
+    scoreColor = '#4285f4'; // Good
+  } else if (score >= 50) {
+    scoreColor = '#fbbc04'; // Fair
+  }
 
   return (
     <span style={{
@@ -263,7 +265,7 @@ const Score = ({ score }) => {
       fontWeight: 'bold',
       fontSize: '1.2em'
     }}>
-      {score}
+      {score}/100
     </span>
   );
 };
