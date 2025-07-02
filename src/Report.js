@@ -5,6 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 import html2pdf from 'html2pdf.js';
 
 
+import './Print.css';
+
 const createStyledPresentation = async (analysis) => {
   try {
     const slides = window.gapi.client.slides;
@@ -156,13 +158,6 @@ const createStyledPresentation = async (analysis) => {
     };
 
     // --- Evaluation Summary Slide ---
-    const scoreColor = {
-      'Excellent': COLORS.green_g500,
-      'Good': COLORS.blue_g500,
-      'Fair': COLORS.yellow_g500,
-      'Poor': COLORS.red_g500,
-    }[analysis.evaluation_summary.overall_score];
-
     const summaryBody = [
       { text: 'ABCD Scores:\n', style: { ...FONT_STYLES.highlight, bold: true } },
       { text: `Attract: ${analysis.evaluation_summary.abcd_scores.attract}/10\n`, style: FONT_STYLES.body },
@@ -190,13 +185,12 @@ const createStyledPresentation = async (analysis) => {
 
     // --- Strategic Recommendations Slide ---
     const recommendationsBody = analysis.strategic_recommendations.flatMap(rec => [
-        { text: `${rec.recommendation}
-`, style: { ...FONT_STYLES.body, bold: true } },
-        { text: `${rec.rationale}
-`, style: FONT_STYLES.body },
-        { text: `${rec.predicted_impact}
-
-`, style: { ...FONT_STYLES.footnote, color: COLORS.grey_g700 } },
+        { text: `${rec.recommendation}\n`,
+ style: { ...FONT_STYLES.body, bold: true } },
+        { text: `${rec.rationale}\n`,
+ style: FONT_STYLES.body },
+        { text: `${rec.predicted_impact}\n\n`,
+ style: { ...FONT_STYLES.footnote, color: COLORS.grey_g700 } },
     ]);
     await addContentSlide('Strategic Recommendations', recommendationsBody);
 
@@ -332,7 +326,6 @@ const Report = ({ analysis }) => {
   const {
     evaluation_summary,
     marketing_objective,
-    asset_requirements_check,
     abcd_analysis,
     strategic_recommendations,
   } = analysis;
@@ -418,8 +411,8 @@ const Report = ({ analysis }) => {
                 ))}
               </ul>
             </div>
-          </div>
-        )}
+          }
+        </div>
       </div>
     </div>
   );
