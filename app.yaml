@@ -1,8 +1,4 @@
 runtime: nodejs20
+entrypoint: node server.js
 env_variables:
   GEMINI_API_KEY: 'AIzaSyBsnrkDbHN6u0oaPhRLD7-dg2Ng_tYoz1I'
-handlers:
-- url: /static
-  static_dir: build/static
-- url: /.*
-  script: auto
