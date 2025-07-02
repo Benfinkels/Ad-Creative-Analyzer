@@ -26,6 +26,154 @@ const createStyledPresentation = async (analysis) => {
       red_g500: { rgbColor: { red: 234 / 255, green: 67 / 255, blue: 53 / 255 } },
     };
 
+    const createStyledTextBox = (pageId, text, x, y, width, height) => {
+      const boxId = uuidv4();
+      const requests = [
+        {
+          createShape: {
+            objectId: boxId,
+            shapeType: 'ROUND_RECTANGLE',
+            elementProperties: {
+              pageObjectId: pageId,
+              size: { width: { magnitude: width, unit: 'PT' }, height: { magnitude: height, unit: 'PT' } },
+              transform: { scaleX: 1, scaleY: 1, translateX: x, translateY: y, unit: 'PT' },
+            },
+          },
+        },
+        {
+          updateShapeProperties: {
+            objectId: boxId,
+            shapeProperties: {
+              shapeBackgroundFill: { solidFill: { color: COLORS.light_grey_g100 } },
+              outline: {
+                solidFill: { color: COLORS.grey_g700 },
+                weight: { magnitude: 1, unit: 'PT' },
+              },
+            },
+            fields: 'shapeBackgroundFill,outline',
+          },
+        },
+        {
+          insertText: {
+            objectId: boxId,
+            text: text,
+          },
+        },
+      ];
+      return requests;
+    };
+
+    const createTextBox = (pageId, title, content, x, y, width, height) => {
+      const boxId = uuidv4();
+      const titleId = uuidv4();
+      const contentId = uuidv4();
+      const requests = [
+        {
+          createShape: {
+            objectId: boxId,
+            shapeType: 'RECTANGLE',
+            elementProperties: {
+              pageObjectId: pageId,
+              size: { width: { magnitude: width, unit: 'PT' }, height: { magnitude: height, unit: 'PT' } },
+              transform: { scaleX: 1, scaleY: 1, translateX: x, translateY: y, unit: 'PT' },
+            },
+          },
+        },
+        {
+          updateShapeProperties: {
+            objectId: boxId,
+            shapeProperties: {
+              shapeBackgroundFill: { solidFill: { color: COLORS.light_grey_g100 } },
+              outline: {
+                solidFill: { color: COLORS.grey_g700 },
+                weight: { magnitude: 1, unit: 'PT' },
+              },
+            },
+            fields: 'shapeBackgroundFill,outline',
+          },
+        },
+        {
+          insertText: {
+            objectId: boxId,
+            text: `${title}\n${content}`,
+          },
+        },
+        {
+          updateTextStyle: {
+            objectId: boxId,
+            style: {
+              fontFamily: 'Google Sans',
+              fontSize: { magnitude: 12, unit: 'PT' },
+              bold: true,
+              foregroundColor: { opaqueColor: COLORS.black_g800 },
+            },
+            textRange: { type: 'FIXED_RANGE', startIndex: 0, endIndex: title.length },
+            fields: 'fontFamily,fontSize,bold,foregroundColor',
+          },
+        },
+        {
+          updateTextStyle: {
+            objectId: boxId,
+            style: {
+              fontFamily: 'Roboto',
+              fontSize: { magnitude: 10, unit: 'PT' },
+              foregroundColor: { opaqueColor: COLORS.grey_g700 },
+            },
+            textRange: { type: 'FIXED_RANGE', startIndex: title.length + 1, endIndex: title.length + 1 + content.length },
+            fields: 'fontFamily,fontSize,foregroundColor',
+          },
+        },
+      ];
+      return requests;
+    };
+
+    const createScorecard = (pageId, scores) => {
+      const tableId = `scorecard_${pageId}`;
+      const rows = 2;
+      const cols = 4;
+      const table = {
+        createTable: {
+          objectId: tableId,
+          elementProperties: {
+            pageObjectId: pageId,
+            size: {
+              width: { magnitude: 480, unit: 'PT' },
+              height: { magnitude: 100, unit: 'PT' },
+            },
+            transform: {
+              scaleX: 1,
+              scaleY: 1,
+              translateX: 120,
+              translateY: 200,
+              unit: 'PT',
+            },
+          },
+          rows,
+          columns: cols,
+        },
+      };
+
+      const requests = [table];
+      const pillars = ['Attract', 'Brand', 'Connect', 'Direct'];
+      pillars.forEach((pillar, i) => {
+        requests.push({
+          insertText: {
+            objectId: tableId,
+            cellLocation: { rowIndex: 0, columnIndex: i },
+            text: pillar,
+          },
+        });
+        requests.push({
+          insertText: {
+            objectId: tableId,
+            cellLocation: { rowIndex: 1, columnIndex: i },
+            text: `${scores[pillar.toLowerCase()]}/10`,
+          },
+        });
+      });
+      return requests;
+    };
+
     const FONT_STYLES = {
       title: { fontFamily: 'Google Sans', fontSize: 24, bold: true, color: COLORS.black_g800 },
       slideTitle: { fontFamily: 'Google Sans', fontSize: 18, bold: true, color: COLORS.black_g800 },
@@ -108,67 +256,44 @@ const createStyledPresentation = async (analysis) => {
       const slideId = uuidv4();
       await slides.presentations.batchUpdate({
         presentationId,
-        requests: [{ createSlide: { objectId: slideId, slideLayoutReference: { predefinedLayout: 'TITLE_AND_BODY' } } }],
+        requests: [{ createSlide: { objectId: slideId, slideLayoutReference: { predefinedLayout: 'BLANK' } } }],
       });
       pres = await slides.presentations.get({ presentationId });
       slide = pres.result.slides.find(s => s.objectId === slideId);
-      titleElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'TITLE' || e.shape?.placeholder?.type === 'CENTERED_TITLE');
-      const bodyElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'BODY');
-      titleId = titleElement.objectId;
-      const bodyId = bodyElement.objectId;
-
+      
       const requests = [
-        { insertText: { objectId: titleId, text: title } },
-        ...styleText(titleId, FONT_STYLES.slideTitle),
-        { insertText: { objectId: bodyId, text: '' } }, // Clear default text
+        ...createStyledTextBox(slide.objectId, `${title}\n\n${bodyContent.map(item => item.text).join('\n')}`, 50, 50, 622, 302),
         createImage(logoUrl, slide.objectId, 50, 50, 500, 10),
       ];
-
-      let currentOffset = 0;
-      for (const item of bodyContent) {
-        const text = item.text + '\n';
-        requests.push({
-          insertText: {
-            objectId: bodyId,
-            insertionIndex: currentOffset,
-            text,
-          },
-        });
-        requests.push({
-          updateTextStyle: {
-            objectId: bodyId,
-            style: {
-              fontFamily: item.style.fontFamily || 'Roboto',
-              fontSize: { magnitude: item.style.fontSize || 10, unit: 'PT' },
-              foregroundColor: { opaqueColor: item.style.color || COLORS.grey_g700 },
-              bold: item.style.bold || false,
-            },
-            textRange: {
-              type: 'FIXED_RANGE',
-              startIndex: currentOffset,
-              endIndex: currentOffset + text.length,
-            },
-            fields: 'fontFamily,fontSize,foregroundColor,bold',
-          },
-        });
-        currentOffset += text.length;
-      }
 
       await slides.presentations.batchUpdate({ presentationId, requests });
     };
 
     // --- Evaluation Summary Slide ---
-    const summaryBody = [
-      { text: 'ABCD Scores:\n', style: { ...FONT_STYLES.highlight, bold: true } },
-      { text: `Attract: ${analysis.evaluation_summary.abcd_scores.attract}/10\n`, style: FONT_STYLES.body },
-      { text: `Brand: ${analysis.evaluation_summary.abcd_scores.brand}/10\n`, style: FONT_STYLES.body },
-      { text: `Connect: ${analysis.evaluation_summary.abcd_scores.connect}/10\n`, style: FONT_STYLES.body },
-      { text: `Direct: ${analysis.evaluation_summary.abcd_scores.direct}/10\n\n`, style: FONT_STYLES.body },
-      { text: `Executive Summary: ${analysis.evaluation_summary.executive_summary}`, style: FONT_STYLES.body },
-      { text: `\nTop Strength: ${analysis.evaluation_summary.top_strength}`, style: FONT_STYLES.body },
-      { text: `\nTop Opportunity: ${analysis.evaluation_summary.top_opportunity}`, style: FONT_STYLES.body },
+    const summarySlideId = uuidv4();
+    await slides.presentations.batchUpdate({
+      presentationId,
+      requests: [{ createSlide: { objectId: summarySlideId, slideLayoutReference: { predefinedLayout: 'TITLE_AND_BODY' } } }],
+    });
+    pres = await slides.presentations.get({ presentationId });
+    slide = pres.result.slides.find(s => s.objectId === summarySlideId);
+    titleElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'TITLE' || e.shape?.placeholder?.type === 'CENTERED_TITLE');
+    const bodyElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'BODY');
+    titleId = titleElement.objectId;
+    const bodyId = bodyElement.objectId;
+
+    const summaryRequests = [
+      { insertText: { objectId: titleId, text: 'Evaluation Summary' } },
+      ...styleText(titleId, FONT_STYLES.slideTitle),
+      { insertText: { objectId: bodyId, text: `Executive Summary: ${analysis.evaluation_summary.executive_summary}` } },
+      ...styleText(bodyId, FONT_STYLES.body),
+      createImage(logoUrl, summarySlideId, 50, 50, 500, 10),
+      ...createScorecard(summarySlideId, analysis.evaluation_summary.abcd_scores),
+      ...createTextBox(summarySlideId, 'Top Strength', analysis.evaluation_summary.top_strength, 120, 320, 230, 100),
+      ...createTextBox(summarySlideId, 'Top Opportunity', analysis.evaluation_summary.top_opportunity, 370, 320, 230, 100),
     ];
-    await addContentSlide('Evaluation Summary', summaryBody);
+
+    await slides.presentations.batchUpdate({ presentationId, requests: summaryRequests });
 
     // --- ABCD Analysis Slides ---
     for (const [pillar, data] of Object.entries(analysis.abcd_analysis)) {
@@ -205,6 +330,7 @@ const createStyledPresentation = async (analysis) => {
 const GoogleSlidesExport = ({ analysis }) => {
   const [isGapiReady, setIsGapiReady] = useState(false);
   const [gapiError, setGapiError] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     initGoogleApi()
@@ -219,6 +345,7 @@ const GoogleSlidesExport = ({ analysis }) => {
   }, []);
 
   const handleExport = async () => {
+    setExporting(true);
     try {
       await handleAuthClick();
       const presentation = await createStyledPresentation(analysis);
@@ -226,6 +353,8 @@ const GoogleSlidesExport = ({ analysis }) => {
     } catch (error) {
       console.error('Error exporting to Google Slides:', error);
       alert('Error exporting to Google Slides. Please check the console for more details and ensure your Google Cloud project is configured correctly.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -238,8 +367,8 @@ const GoogleSlidesExport = ({ analysis }) => {
   }
 
   return (
-    <button className="btn-export" onClick={handleExport}>
-      Export to Google Slides
+    <button className="btn-export" onClick={handleExport} disabled={exporting}>
+      {exporting ? 'Exporting...' : 'Export to Google Slides'}
     </button>
   );
 };
@@ -411,9 +540,9 @@ const Report = ({ analysis }) => {
                 ))}
               </ul>
             </div>
-          }
+          </div>
+        )}
         </div>
-      </div>
     </div>
   );
 };

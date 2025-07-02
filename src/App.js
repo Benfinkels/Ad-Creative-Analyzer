@@ -5,6 +5,8 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 import './Report.css';
 
+import { mockAnalysis } from './mock-analysis';
+
 function App() {
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -19,11 +21,20 @@ function App() {
     setIsLoading(false);
   };
 
+  const loadMockData = () => {
+    setAnalysis(mockAnalysis);
+  };
+
   return (
     <div className="container mt-5">
       <div className="text-center mb-4">
         <h1>YouTube Ad ABCD Analyzer</h1>
         <p className="lead">Upload your video ad to get an expert analysis based on Google's creative framework. created by Ben Finkelstein</p>
+        {process.env.NODE_ENV === 'development' && (
+          <button className="btn btn-secondary mt-2" onClick={loadMockData}>
+            Load Mock Data
+          </button>
+        )}
       </div>
       <VideoUpload
         onAnalysisComplete={handleAnalysisComplete}
