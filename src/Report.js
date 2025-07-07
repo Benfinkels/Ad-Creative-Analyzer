@@ -256,15 +256,61 @@ const createStyledPresentation = async (analysis) => {
       const slideId = uuidv4();
       await slides.presentations.batchUpdate({
         presentationId,
-        requests: [{ createSlide: { objectId: slideId, slideLayoutReference: { predefinedLayout: 'BLANK' } } }],
+        requests: [{ createSlide: { objectId: slideId, slideLayoutReference: { predefinedLayout: 'TITLE_AND_BODY' } } }],
       });
       pres = await slides.presentations.get({ presentationId });
       slide = pres.result.slides.find(s => s.objectId === slideId);
-      
+      titleElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'TITLE' || e.shape?.placeholder?.type === 'CENTERED_TITLE');
+      const bodyElement = slide.pageElements.find(e => e.shape?.placeholder?.type === 'BODY');
+      titleId = titleElement.objectId;
+      const bodyId = bodyElement.objectId;
+
       const requests = [
-        ...createStyledTextBox(slide.objectId, `${title}\n\n${bodyContent.map(item => item.text).join('\n')}`, 50, 50, 622, 302),
+        { insertText: { objectId: titleId, text: title } },
+        ...styleText(titleId, FONT_STYLES.slideTitle),
+        { insertText: { objectId: bodyId, text: '' } }, // Clear default text
         createImage(logoUrl, slide.objectId, 50, 50, 500, 10),
+        {
+          createShape: {
+            shapeType: 'ROUND_RECTANGLE',
+            elementProperties: {
+              pageObjectId: slideId,
+              size: bodyElement.size,
+              transform: bodyElement.transform,
+            },
+          },
+        },
       ];
+
+      let currentOffset = 0;
+      for (const item of bodyContent) {
+        const text = item.text + '\n';
+        requests.push({
+          insertText: {
+            objectId: bodyId,
+            insertionIndex: currentOffset,
+            text,
+          },
+        });
+        requests.push({
+          updateTextStyle: {
+            objectId: bodyId,
+            style: {
+              fontFamily: item.style.fontFamily || 'Roboto',
+              fontSize: { magnitude: item.style.fontSize || 10, unit: 'PT' },
+              foregroundColor: { opaqueColor: item.style.color || COLORS.grey_g700 },
+              bold: item.style.bold || false,
+            },
+            textRange: {
+              type: 'FIXED_RANGE',
+              startIndex: currentOffset,
+              endIndex: currentOffset + text.length,
+            },
+            fields: 'fontFamily,fontSize,foregroundColor,bold',
+          },
+        });
+        currentOffset += text.length;
+      }
 
       await slides.presentations.batchUpdate({ presentationId, requests });
     };
@@ -285,12 +331,7 @@ const createStyledPresentation = async (analysis) => {
     const summaryRequests = [
       { insertText: { objectId: titleId, text: 'Evaluation Summary' } },
       ...styleText(titleId, FONT_STYLES.slideTitle),
-      { insertText: { objectId: bodyId, text: `Executive Summary: ${analysis.evaluation_summary.executive_summary}` } },
-      ...styleText(bodyId, FONT_STYLES.body),
       createImage(logoUrl, summarySlideId, 50, 50, 500, 10),
-      ...createScorecard(summarySlideId, analysis.evaluation_summary.abcd_scores),
-      ...createTextBox(summarySlideId, 'Top Strength', analysis.evaluation_summary.top_strength, 120, 320, 230, 100),
-      ...createTextBox(summarySlideId, 'Top Opportunity', analysis.evaluation_summary.top_opportunity, 370, 320, 230, 100),
     ];
 
     await slides.presentations.batchUpdate({ presentationId, requests: summaryRequests });

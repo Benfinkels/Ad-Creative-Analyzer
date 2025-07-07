@@ -3,6 +3,8 @@ const multer = require('multer');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 const path = require('path');
+const YTDlpWrap = require('yt-dlp-wrap').default;
+const os = require('os');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
@@ -15,7 +17,126 @@ const systemPrompt = fs.readFileSync(path.join(__dirname, 'system-prompt.txt'), 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+// Define the path for the yt-dlp binary
+const ytdlpBinaryPath = path.join(__dirname, 'yt-dlp');
+let ytDlpWrap;
+
 app.use(express.static(path.join(__dirname, 'build')));
+app.use(express.json());
+
+app.post('/api/analyze-url', async (req, res) => {
+    const { videoUrl, marketing_objective } = req.body;
+
+    if (!videoUrl) {
+        return res.status(400).send('No video URL provided.');
+    }
+
+    if (!ytDlpWrap) {
+        return res.status(500).send('yt-dlp is not initialized.');
+    }
+
+    const tempDir = os.tmpdir();
+    const tempFilePath = path.join(tempDir, `${Date.now()}.mp4`);
+
+    try {
+        console.log(`Downloading video from ${videoUrl} to ${tempFilePath}`);
+        await ytDlpWrap.execPromise([
+            videoUrl,
+            '-o', tempFilePath,
+            '-f', 'best[ext=mp4]', // Download the best quality MP4
+        ]);
+        console.log('Video downloaded successfully.');
+
+        const videoBuffer = fs.readFileSync(tempFilePath);
+        const videoMimeType = 'video/mp4';
+
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-1.5-pro-latest',
+            systemInstruction: systemPrompt,
+        });
+
+        const videoPart = {
+            inlineData: {
+                data: videoBuffer.toString('base64'),
+                mimeType: videoMimeType,
+            },
+        };
+
+        let result;
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts) {
+            try {
+                result = await model.generateContent([
+                    `Marketing Objective: ${marketing_objective}`,
+                    videoPart,
+                ]);
+                break; 
+            } catch (error) {
+                attempts++;
+                console.error(`Attempt ${attempts} failed:`, error);
+                if (attempts >= maxAttempts) {
+                    throw error; 
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+            }
+        }
+
+        const response = await result.response;
+        const rawText = response.text();
+        console.log("---- RAW GEMINI RESPONSE ----");
+        console.log(rawText);
+        console.log("---- END RAW GEMINI RESPONSE ----");
+        let text = rawText;
+
+        const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
+        const match = text.match(jsonRegex);
+
+        if (match && match[1]) {
+            text = match[1].trim();
+        } else {
+            const firstBracket = text.indexOf('{');
+            const lastBracket = text.lastIndexOf('}');
+            if (firstBracket !== -1 && lastBracket !== -1) {
+                text = text.substring(firstBracket, lastBracket + 1);
+            }
+        }
+
+        try {
+            const jsonResponse = JSON.parse(text);
+            res.json(jsonResponse);
+        } catch (e) {
+            console.error('Initial parse failed. Attempting to repair JSON.', e);
+            console.error('Raw Gemini response:', text);
+
+            try {
+                const repairModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                const repairResult = await repairModel.generateContent([
+                    "The following text is a broken JSON response from an API. Please correct any syntax errors and return only the valid JSON object. Do not add any extra text or explanations.",
+                    text
+                ]);
+                const repairedText = (await repairResult.response).text();
+                const jsonResponse = JSON.parse(repairedText);
+                console.log('Successfully repaired and parsed JSON.');
+                res.json(jsonResponse);
+            } catch (repairError) {
+                console.error('Failed to repair and parse Gemini response:', repairError);
+                res.status(500).send('Error parsing analysis data after repair.');
+            }
+        }
+    } catch (error) {
+        console.error('Error processing video from URL:', error);
+        res.status(500).send('Error processing video from URL');
+    } finally {
+        // Clean up the downloaded file
+        if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+            console.log(`Deleted temporary file: ${tempFilePath}`);
+        }
+    }
+});
+
 
 app.post('/api/analyze-video', upload.single('video'), async (req, res) => {
   try {
@@ -114,6 +235,27 @@ app.get('/readiness_check', (req, res) => {
   res.status(200).send('OK');
 });
 
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
-});
+(async () => {
+    try {
+        if (!fs.existsSync(ytdlpBinaryPath)) {
+            console.log('Downloading yt-dlp binary...');
+            await YTDlpWrap.downloadFromGithub(ytdlpBinaryPath);
+            console.log('yt-dlp binary downloaded successfully.');
+        } else {
+            console.log('yt-dlp binary already exists.');
+        }
+        
+        // Ensure the binary is executable
+        fs.chmodSync(ytdlpBinaryPath, '755');
+        
+        // Initialize the wrapper with the correct path
+        ytDlpWrap = new YTDlpWrap(ytdlpBinaryPath);
+        
+        app.listen(port, () => {
+            console.log(`Server listening on port ${port}`);
+        });
+    } catch (error) {
+        console.error('Error during server startup:', error);
+        process.exit(1);
+    }
+})();

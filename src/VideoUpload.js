@@ -1,34 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 const VideoUpload = ({ onAnalysisComplete, onAnalysisStart }) => {
   const [file, setFile] = useState(null);
+  const [videoUrl, setVideoUrl] = useState('');
   const [marketingObjective, setMarketingObjective] = useState('Awareness');
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [activeTab, setActiveTab] = useState('upload'); // 'upload' or 'url'
+  const progressInterval = useRef(null);
+
+  useEffect(() => {
+    if (uploading) {
+      progressInterval.current = setInterval(() => {
+        setProgress((prevProgress) => {
+          if (prevProgress >= 90) {
+            clearInterval(progressInterval.current);
+            return 90;
+          }
+          return prevProgress + 10;
+        });
+      }, 1000);
+    } else {
+      clearInterval(progressInterval.current);
+      setProgress(0);
+    }
+
+    return () => clearInterval(progressInterval.current);
+  }, [uploading]);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
   };
 
-  const handleUpload = async () => {
-    if (!file) {
+  const handleUrlChange = (e) => {
+    setVideoUrl(e.target.value);
+  };
+
+  const handleAnalyze = async () => {
+    if (activeTab === 'upload' && !file) {
       alert('Please select a file to upload.');
+      return;
+    }
+    if (activeTab === 'url' && !videoUrl) {
+      alert('Please enter a video URL.');
       return;
     }
 
     setUploading(true);
     onAnalysisStart();
 
-    const formData = new FormData();
-    formData.append('video', file);
-    formData.append('marketing_objective', marketingObjective);
-
     try {
-      const response = await axios.post('/api/analyze-video', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      let response;
+      if (activeTab === 'upload') {
+        const formData = new FormData();
+        formData.append('video', file);
+        formData.append('marketing_objective', marketingObjective);
+        response = await axios.post('/api/analyze-video', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      } else {
+        response = await axios.post('/api/analyze-url', {
+          videoUrl,
+          marketing_objective: marketingObjective,
+        });
+      }
       onAnalysisComplete(response.data);
     } catch (error) {
       console.error('Error analyzing video:', error);
@@ -40,10 +78,41 @@ const VideoUpload = ({ onAnalysisComplete, onAnalysisStart }) => {
 
   return (
     <div className="card p-4">
-      <div className="mb-3">
-        <label htmlFor="videoFile" className="form-label">Upload Video Ad</label>
-        <input className="form-control" type="file" id="videoFile" onChange={handleFileChange} accept="video/*" />
+      <ul className="nav nav-tabs">
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'upload' ? 'active' : ''}`} onClick={() => setActiveTab('upload')}>
+            Upload Video
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${activeTab === 'url' ? 'active' : ''}`} onClick={() => setActiveTab('url')}>
+            Analyze from URL <span className="badge bg-primary">Beta</span>
+          </button>
+        </li>
+      </ul>
+
+      <div className="tab-content p-3 border border-top-0">
+        {activeTab === 'upload' && (
+          <div className="mb-3">
+            <label htmlFor="videoFile" className="form-label">Upload Video Ad</label>
+            <input className="form-control" type="file" id="videoFile" onChange={handleFileChange} accept="video/*" />
+          </div>
+        )}
+        {activeTab === 'url' && (
+          <div className="mb-3">
+            <label htmlFor="videoUrl" className="form-label">Video URL</label>
+            <input
+              type="text"
+              className="form-control"
+              id="videoUrl"
+              value={videoUrl}
+              onChange={handleUrlChange}
+              placeholder="e.g., https://www.youtube.com/watch?v=..."
+            />
+          </div>
+        )}
       </div>
+
       <div className="mb-3">
         <label htmlFor="marketingObjective" className="form-label">Select Marketing Objective</label>
         <select
@@ -57,14 +126,24 @@ const VideoUpload = ({ onAnalysisComplete, onAnalysisStart }) => {
           <option value="Action">Action</option>
         </select>
       </div>
-      <button className="btn btn-primary" onClick={handleUpload} disabled={uploading}>
-        {uploading ? (
-          <>
-            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-            <span className="ms-2">Analyzing...</span>
-          </>
-        ) : 'Analyze Video'}
-      </button>
+      {uploading ? (
+        <div className="progress">
+          <div
+            className="progress-bar"
+            role="progressbar"
+            style={{ width: `${progress}%` }}
+            aria-valuenow={progress}
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            {progress}%
+          </div>
+        </div>
+      ) : (
+        <button className="btn btn-primary" onClick={handleAnalyze} disabled={uploading}>
+          Analyze
+        </button>
+      )}
     </div>
   );
 };
