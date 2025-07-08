@@ -18,7 +18,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // Define the path for the yt-dlp binary
-const ytdlpBinaryPath = path.join(__dirname, 'yt-dlp');
+const ytdlpBinaryPath = path.join(os.tmpdir(), 'yt-dlp');
 let ytDlpWrap;
 
 app.use(express.static(path.join(__dirname, 'build')));
@@ -246,7 +246,7 @@ app.get('/readiness_check', (req, res) => {
         }
         
         // Ensure the binary is executable
-        fs.chmodSync(ytdlpBinaryPath, '755');
+        
         
         // Initialize the wrapper with the correct path
         ytDlpWrap = new YTDlpWrap(ytdlpBinaryPath);
