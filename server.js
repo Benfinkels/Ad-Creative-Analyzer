@@ -22,7 +22,43 @@ const ytdlpBinaryPath = path.join(__dirname, 'yt-dlp');
 let ytDlpWrap;
 
 app.use(express.static(path.join(__dirname, 'build')));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+const { Storage } = require('@google-cloud/storage');
+const storageClient = new Storage();
+const bucketName = process.env.GCS_BUCKET_NAME || 'ad-analyzer-uploads';
+
+// ... other app.use() statements
+
+//  ADD THIS ENTIRE ENDPOINT
+app.post('/api/generate-upload-url', async (req, res) => {
+  const { fileName, fileType } = req.body;
+
+  if (!fileName || !fileType) {
+    return res.status(400).send('Missing fileName or fileType in the request body.');
+  }
+
+  const options = {
+    version: 'v4',
+    action: 'write',
+    expires: Date.now() + 15 * 60 * 1000, // 15 minutes
+    contentType: fileType,
+  };
+
+  try {
+    // Get a v4 signed URL for uploading a file
+    const [url] = await storageClient
+      .bucket(bucketName)
+      .file(fileName)
+      .getSignedUrl(options);
+
+    res.json({ url, fileName });
+  } catch (error) {
+    console.error('Failed to generate signed URL:', error);
+    res.status(500).send('Could not create upload URL.');
+  }
+});
 
 app.post('/api/analyze-url', async (req, res) => {
     const { videoUrl, marketing_objective } = req.body;
@@ -138,23 +174,25 @@ app.post('/api/analyze-url', async (req, res) => {
 });
 
 
-app.post('/api/analyze-video', upload.single('video'), async (req, res) => {
+app.post('/api/analyze-video', async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).send('No video file uploaded.');
+    const { gcsPath, marketing_objective } = req.query;
+    if (!gcsPath) {
+      return res.status(400).send('No GCS path provided.');
     }
+
+    const [file] = await storageClient.bucket(bucketName).file(gcsPath).download();
+    const [metadata] = await storageClient.bucket(bucketName).file(gcsPath).getMetadata();
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-1.5-pro-latest',
       systemInstruction: systemPrompt,
     });
 
-    const { marketing_objective } = req.body;
-
     const videoPart = {
       inlineData: {
-        data: req.file.buffer.toString('base64'),
-        mimeType: req.file.mimetype,
+        data: file.toString('base64'),
+        mimeType: metadata.contentType,
       },
     };
 
@@ -204,14 +242,18 @@ app.post('/api/analyze-video', upload.single('video'), async (req, res) => {
 
     try {
       const jsonResponse = JSON.parse(text);
+      if (!jsonResponse.evaluation_summary) {
+        throw new Error("Invalid analysis format: evaluation_summary missing.");
+      }
       res.json(jsonResponse);
     } catch (e) {
-      console.error('Initial parse failed. Attempting to repair JSON.', e);
+      console.error('Initial parse failed or response invalid. Attempting to repair JSON.', e);
       console.error('Raw Gemini response:', text);
 
+      let repairResult;
       try {
         const repairModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        const repairResult = await repairModel.generateContent([
+        repairResult = await repairModel.generateContent([
           "The following text is a broken JSON response from an API. Please correct any syntax errors and return only the valid JSON object. Do not add any extra text or explanations.",
           text
         ]);
@@ -221,13 +263,15 @@ app.post('/api/analyze-video', upload.single('video'), async (req, res) => {
         res.json(jsonResponse);
       } catch (repairError) {
         console.error('Failed to repair and parse Gemini response:', repairError);
-        console.error('Repaired text was:', (await repairResult.response).text());
-        res.status(500).send('Error parsing analysis data after repair.');
+        if (repairResult) {
+          console.error('Repaired text was:', (await repairResult.response).text());
+        }
+        res.status(500).send({ error: 'Error parsing analysis data after repair.' });
       }
     }
   } catch (error) {
-    console.error('Error analyzing video:', error);
-    res.status(500).send('Error analyzing video');
+    console.error('Error in /api/analyze-video:', error);
+    res.status(500).send('An unexpected error occurred during video analysis.');
   }
 });
 
