@@ -6,6 +6,7 @@ const VideoUpload = ({ onAnalysisComplete, onAnalysisStart }) => {
   const [videoUrl, setVideoUrl] = useState('');
   const [marketingObjective, setMarketingObjective] = useState('Awareness');
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' or 'url'
   const progressInterval = useRef(null);
@@ -38,41 +39,62 @@ const VideoUpload = ({ onAnalysisComplete, onAnalysisStart }) => {
   };
 
   const handleAnalyze = async () => {
-    if (activeTab === 'upload' && !file) {
-      alert('Please select a file to upload.');
-      return;
-    }
-    if (activeTab === 'url' && !videoUrl) {
-      alert('Please enter a video URL.');
-      return;
-    }
+    if (activeTab === 'upload') {
+      if (!file) {
+        alert('Please select a file to upload.');
+        return;
+      }
 
-    setUploading(true);
-    onAnalysisStart();
+      setUploading(true);
+      setError(null);
+      onAnalysisStart();
 
-    try {
-      let response;
-      if (activeTab === 'upload') {
-        const formData = new FormData();
-        formData.append('video', file);
-        formData.append('marketing_objective', marketingObjective);
-        response = await axios.post('/api/analyze-video', formData, {
+      try {
+        // 1. Get signed URL from our server
+        const { data: { url, fileName } } = await axios.post('/api/generate-upload-url', {
+          fileName: file.name,
+          fileType: file.type,
+        });
+
+        // 2. Upload file directly to GCS
+        await axios.put(url, file, {
           headers: {
-            'Content-Type': 'multipart/form-data',
+            'Content-Type': file.type,
           },
         });
-      } else {
-        response = await axios.post('/api/analyze-url', {
+
+        // 3. Call our server to start analysis from GCS
+        const response = await axios.get(`/api/analyze-video?gcsPath=${fileName}&marketing_objective=${marketingObjective}`);
+        onAnalysisComplete(response.data);
+
+      } catch (error) {
+        console.error('Error analyzing video:', error);
+        setError('An error occurred during the analysis. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    } else {
+      if (!videoUrl) {
+        alert('Please enter a video URL.');
+        return;
+      }
+
+      setUploading(true);
+      setError(null);
+      onAnalysisStart();
+
+      try {
+        const response = await axios.post('/api/analyze-url', {
           videoUrl,
           marketing_objective: marketingObjective,
         });
+        onAnalysisComplete(response.data);
+      } catch (error) {
+        console.error('Error analyzing video:', error);
+        setError('An error occurred during the analysis. Please try again.');
+      } finally {
+        setUploading(false);
       }
-      onAnalysisComplete(response.data);
-    } catch (error) {
-      console.error('Error analyzing video:', error);
-      alert('Error analyzing video. Please try again.');
-    } finally {
-      setUploading(false);
     }
   };
 

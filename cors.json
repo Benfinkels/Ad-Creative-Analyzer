@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://beta-v3-dot-beta-dot-ad-analyzer-sandbox-735825.ue.r.appspot.com"],
+    "method": ["PUT"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]

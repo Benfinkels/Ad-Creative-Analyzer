@@ -17,7 +17,12 @@ function App() {
   };
 
   const handleAnalysisComplete = (analysisData) => {
-    setAnalysis(analysisData);
+    if (analysisData && analysisData.evaluation_summary) {
+      setAnalysis(analysisData);
+    } else {
+      const errorMessage = analysisData?.error || 'An unknown error occurred during analysis.';
+      setAnalysis({ error: errorMessage });
+    }
     setIsLoading(false);
   };
 

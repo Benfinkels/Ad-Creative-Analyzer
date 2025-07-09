@@ -1,0 +1,10 @@
+{
+  "name": "video-downloader",
+  "version": "1.0.0",
+  "description": "A Google Cloud Function to download videos from a URL.",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.0.0",
+    "yt-dlp-wrap": "^2.3.12"
+  }
+}

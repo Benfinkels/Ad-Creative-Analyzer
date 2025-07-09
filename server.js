@@ -174,7 +174,7 @@ app.post('/api/analyze-url', async (req, res) => {
 });
 
 
-app.post('/api/analyze-video', async (req, res) => {
+app.get('/api/analyze-video', async (req, res) => {
   try {
     const { gcsPath, marketing_objective } = req.query;
     if (!gcsPath) {

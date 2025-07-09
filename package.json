@@ -6,6 +6,7 @@
   "proxy": "http://localhost:3003",
   "dependencies": {
     "@craco/craco": "^7.1.0",
+    "@google-cloud/storage": "^7.16.0",
     "@google/generative-ai": "^0.24.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",

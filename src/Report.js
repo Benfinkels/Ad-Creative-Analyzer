@@ -493,6 +493,14 @@ const Report = ({ analysis }) => {
     return null;
   }
 
+  if (analysis.error) {
+    return (
+      <div className="alert alert-danger mt-5" role="alert">
+        {analysis.error}
+      </div>
+    );
+  }
+
   const {
     evaluation_summary,
     marketing_objective,
