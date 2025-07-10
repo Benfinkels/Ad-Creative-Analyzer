@@ -290,7 +290,7 @@ app.get('/readiness_check', (req, res) => {
         }
         
         // Ensure the binary is executable
-        fs.chmodSync(ytdlpBinaryPath, '755');
+        // fs.chmodSync(ytdlpBinaryPath, '755');
         
         // Initialize the wrapper with the correct path
         ytDlpWrap = new YTDlpWrap(ytdlpBinaryPath);
