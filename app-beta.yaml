@@ -5,6 +5,11 @@ env_variables:
   GCS_BUCKET_NAME: 'ad-analyzer-uploads'
 
 handlers:
+  # API routes
+  - url: /api/.*
+    script: auto
+    secure: always
+
   # Serve all static files with urls ending in a file extension
   - url: /(.*\..+)$
     static_files: build/\1
