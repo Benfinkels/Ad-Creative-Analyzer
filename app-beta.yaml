@@ -2,7 +2,7 @@ runtime: nodejs22
 instance_class: F2
 service: beta
 env_variables:
-  GCS_BUCKET_NAME: 'ad-analyzer-uploads-beta'
+  GCS_BUCKET_NAME: 'ad-analyzer-uploads'
 
 handlers:
   # Serve all static files with urls ending in a file extension
