@@ -7,11 +7,6 @@ const YTDlpWrap = require('yt-dlp-wrap').default;
 const os = require('os');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const yaml = require('js-yaml');
-
-const env = yaml.load(fs.readFileSync(path.join(__dirname, '.env.yaml'), 'utf8'));
-process.env.GCS_BUCKET_NAME = env.GCS_BUCKET_NAME;
-
 const app = express();
 const port = process.env.PORT || 3003;
 
