@@ -44,13 +44,12 @@ const createStyledPresentation = async (analysis) => {
           updateShapeProperties: {
             objectId: boxId,
             shapeProperties: {
-              shapeBackgroundFill: { solidFill: { color: COLORS.light_grey_g100 } },
               outline: {
                 solidFill: { color: COLORS.grey_g700 },
                 weight: { magnitude: 1, unit: 'PT' },
               },
             },
-            fields: 'shapeBackgroundFill,outline',
+            fields: 'outline',
           },
         },
         {
@@ -83,13 +82,12 @@ const createStyledPresentation = async (analysis) => {
           updateShapeProperties: {
             objectId: boxId,
             shapeProperties: {
-              shapeBackgroundFill: { solidFill: { color: COLORS.light_grey_g100 } },
               outline: {
                 solidFill: { color: COLORS.grey_g700 },
                 weight: { magnitude: 1, unit: 'PT' },
               },
             },
-            fields: 'shapeBackgroundFill,outline',
+            fields: 'outline',
           },
         },
         {
