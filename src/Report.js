@@ -268,16 +268,6 @@ const createStyledPresentation = async (analysis) => {
         ...styleText(titleId, FONT_STYLES.slideTitle),
         { insertText: { objectId: bodyId, text: '' } }, // Clear default text
         createImage(logoUrl, slide.objectId, 50, 50, 500, 10),
-        {
-          createShape: {
-            shapeType: 'ROUND_RECTANGLE',
-            elementProperties: {
-              pageObjectId: slideId,
-              size: bodyElement.size,
-              transform: bodyElement.transform,
-            },
-          },
-        },
       ];
 
       let currentOffset = 0;
