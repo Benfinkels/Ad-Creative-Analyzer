@@ -53,6 +53,7 @@ app.post('/api/generate-upload-url', async (req, res) => {
       .file(fileName)
       .getSignedUrl(options);
 
+    res.setHeader('Content-Type', 'application/json');
     res.json({ url, fileName });
   } catch (error) {
     console.error('Failed to generate signed URL:', error);
