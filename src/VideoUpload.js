@@ -64,7 +64,7 @@ const VideoUpload = ({ onAnalysisComplete, onAnalysisStart }) => {
         });
 
         // 3. Call our server to start analysis from GCS
-        const response = await axios.get(`/api/analyze-video?gcsPath=${fileName}&marketing_objective=${marketingObjective}`);
+        const response = await axios.get(`/api/analyze-video?gcsPath=${encodeURIComponent(fileName)}&marketing_objective=${marketingObjective}`);
         onAnalysisComplete(response.data);
 
       } catch (error) {

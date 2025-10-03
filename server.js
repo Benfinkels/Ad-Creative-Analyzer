@@ -7,6 +7,11 @@ const YTDlpWrap = require('yt-dlp-wrap').default;
 const os = require('os');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
+const yaml = require('js-yaml');
+
+const env = yaml.load(fs.readFileSync(path.join(__dirname, '.env.yaml'), 'utf8'));
+process.env.GCS_BUCKET_NAME = env.GCS_BUCKET_NAME;
+
 const app = express();
 const port = process.env.PORT || 3003;
 
@@ -246,14 +251,6 @@ app.get('/api/analyze-video', async (req, res) => {
         throw new Error("Invalid analysis format: evaluation_summary missing.");
       }
       res.json(jsonResponse);
-      // Delete the file from GCS after successful analysis
-      try {
-        await storageClient.bucket(bucketName).file(gcsPath).delete();
-        console.log(`Successfully deleted ${gcsPath} from GCS.`);
-      } catch (deleteError) {
-        console.error(`Failed to delete ${gcsPath} from GCS:`, deleteError);
-        // Don't block the response for this, just log the error
-      }
     } catch (e) {
       console.error('Initial parse failed or response invalid. Attempting to repair JSON.', e);
       console.error('Raw Gemini response:', text);
@@ -269,13 +266,6 @@ app.get('/api/analyze-video', async (req, res) => {
         const jsonResponse = JSON.parse(repairedText);
         console.log('Successfully repaired and parsed JSON.');
         res.json(jsonResponse);
-        // Delete the file from GCS after successful analysis
-        try {
-          await storageClient.bucket(bucketName).file(gcsPath).delete();
-          console.log(`Successfully deleted ${gcsPath} from GCS.`);
-        } catch (deleteError) {
-          console.error(`Failed to delete ${gcsPath} from GCS:`, deleteError);
-        }
       } catch (repairError) {
         console.error('Failed to repair and parse Gemini response:', repairError);
         if (repairResult) {
@@ -305,7 +295,7 @@ app.get('/readiness_check', (req, res) => {
         }
         
         // Ensure the binary is executable
-        // fs.chmodSync(ytdlpBinaryPath, '755');
+        fs.chmodSync(ytdlpBinaryPath, '755');
         
         // Initialize the wrapper with the correct path
         ytDlpWrap = new YTDlpWrap(ytdlpBinaryPath);
